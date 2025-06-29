@@ -1,0 +1,14 @@
+TRA | No listeners for event 'debugUpdate'
+TRA | No listeners for event 'debugUpdate'
+TRA | No listeners for event 'debugUpdate'
+TRA | No listeners for event 'debugUpdate'
+TRA | No listeners for event 'debugUpdate'
+TRA | No listeners for event 'debugUpdate'
+TRA | No listeners for event 'debugUpdate'
+TRA | No listeners for event 'debugUpdate'
+TRA | No listeners for event 'debugUpdate'
+TRA | No listeners for event 'debugUpdate'
+TRA | No listeners for event 'debugUpdate'
+TRA | No listeners for event 'debugUpdate'
+
+// note: it's 10 times more log output but the same pattern

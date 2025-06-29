@@ -1,0 +1,249 @@
+Queueing: runtime:ready ipc.js:7:970
+ wails dev  Connected to backend ipc.js:1:29
+sending queued message: runtime:ready ipc.js:7:1319
+GET
+http://localhost:34115/favicon.ico
+[HTTP/1.1 404 Not Found 0ms]
+
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
+Uncaught TypeError: can't access property "width", canvasElement is null
+    drawDisplay App.svelte:76
+    animationFrameId App.svelte:111
+    instance App.svelte:104
+    Callback events.js:36
+    notifyListeners events.js:109
+    EventsNotify events.js:141
+    se main.js:116
+    oe main.js:70
+    Et main.js:84
+    It main.js:97
+    <anonymous> main.js:50
+    <anonymous> main.js:123
+App.svelte:1013:22
