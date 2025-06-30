@@ -13,15 +13,18 @@
 
     async function fetchMemoryView() {
         if (!debugState.PC) return; // Don't fetch if no ROM is loaded
-        const data = await GetMemory(memoryOffset, memoryLimit);
-        // data is base64, needs decoding
-        memoryData = new Uint8Array(atob(data).split('').map(char => char.charCodeAt(0)));
+        try {
+            const data = await GetMemory(memoryOffset, memoryLimit);
+            if (data) {
+                memoryData = new Uint8Array(atob(data).split('').map(char => char.charCodeAt(0)));
+            }
+        } catch (error) {
+            console.error("Failed to fetch memory view:", error);
+        }
     }
 
     onMount(() => {
-        // Fetch memory periodically for the viewer
         memoryUpdateInterval = setInterval(fetchMemoryView, 200);
-        // Debug state is now pushed from App.svelte, no need for EventsOn here.
     });
 
     onDestroy(() => {
@@ -38,7 +41,6 @@
 
     function handleMemoryScroll(event) {
         const target = event.target;
-        // Simple scroll: just move by a fixed amount
         if (event.deltaY > 0) {
             memoryOffset += 16;
         } else {
@@ -48,9 +50,8 @@
         if (memoryOffset < 0) memoryOffset = 0;
         if (memoryOffset > 4096 - memoryLimit) memoryOffset = 4096 - memoryLimit;
 
-        // Prevent page scroll
         event.preventDefault();
-        fetchMemoryView(); // Fetch new view on scroll
+        fetchMemoryView();
     }
 
     async function toggleBreakpoint(address) {
@@ -62,75 +63,96 @@
     }
 </script>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 overflow-y-auto h-full">
-    <!-- CPU Registers -->
-    <div class="p-2 bg-[#34495e] rounded-lg border border-gray-700">
-        <h3 class="font-bold text-lg mb-2">CPU Registers</h3>
-        <div class="grid grid-cols-2 gap-x-4 text-sm font-mono">
-            {#each { length: 8 } as _, i}
-                <span>V{i.toString(16).toUpperCase()}: {`0x${debugState.Registers?.[i]?.toString(16).padStart(2, "0").toUpperCase() ?? "00"}`}</span>
-                <span>V{(i + 8).toString(16).toUpperCase()}: {`0x${debugState.Registers?.[i + 8]?.toString(16).padStart(2, "0").toUpperCase() ?? "00"}`}</span>
-            {/each}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-3 p-3 h-full overflow-y-auto bg-gray-900 text-gray-300 font-sans">
+    
+    <!-- Left Column -->
+    <div class="lg:col-span-1 flex flex-col space-y-3">
+        <!-- CPU State -->
+        <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
+            <h3 class="font-semibold text-md mb-2 text-gray-400">CPU State</h3>
+            <div class="grid grid-cols-2 gap-x-4 text-sm font-mono">
+                <p>PC: <span class="text-cyan-400">{formatAddress(debugState.PC ?? 0)}</span></p>
+                <p>I: <span class="text-cyan-400">{formatAddress(debugState.I ?? 0)}</span></p>
+                <p>SP: <span class="text-cyan-400">{formatAddress(debugState.SP ?? 0)}</span></p>
+            </div>
+        </div>
+
+        <!-- Timers -->
+        <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
+            <h3 class="font-semibold text-md mb-2 text-gray-400">Timers</h3>
+            <div class="grid grid-cols-2 gap-x-4 text-sm font-mono">
+                <p>Delay: <span class="text-green-400">{debugState.DelayTimer ?? 0}</span></p>
+                <p>Sound: <span class="text-green-400">{debugState.SoundTimer ?? 0}</span></p>
+            </div>
+        </div>
+
+        <!-- Registers -->
+        <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
+            <h3 class="font-semibold text-md mb-2 text-gray-400">Registers</h3>
+            <div class="grid grid-cols-4 gap-x-2 gap-y-1 text-sm font-mono">
+                {#each { length: 16 } as _, i}
+                    <span>V{i.toString(16).toUpperCase()}: <span class="text-yellow-400">{`0x${debugState.Registers?.[i]?.toString(16).padStart(2, "0").toUpperCase() ?? "00"}`}</span></span>
+                {/each}
+            </div>
+        </div>
+
+        <!-- Stack -->
+        <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
+            <h3 class="font-semibold text-md mb-2 text-gray-400">Stack</h3>
+            <pre class="text-xs overflow-y-auto h-28 bg-gray-900 p-2 rounded-md border border-gray-700 font-mono">
+                {#each debugState.Stack || [] as value, i}
+                    <div class:text-cyan-300={i === (debugState.SP > 0 ? debugState.SP -1 : 0)} class:font-bold={i === (debugState.SP > 0 ? debugState.SP -1 : 0)}>Stack[{i.toString(16).toUpperCase()}]: {formatAddress(value)}</div>
+                {/each}
+            </pre>
         </div>
     </div>
 
-    <!-- System State -->
-    <div class="p-2 bg-[#34495e] rounded-lg border border-gray-700">
-        <h3 class="font-bold text-lg mb-2">System State</h3>
-        <div class="text-sm font-mono">
-            <p>PC: {`0x${debugState.PC?.toString(16).padStart(4, "0").toUpperCase() ?? "0000"}`}</p>
-            <p>I: {`0x${debugState.I?.toString(16).padStart(4, "0").toUpperCase() ?? "0000"}`}</p>
-            <p>SP: {`0x${debugState.SP?.toString(16).padStart(2, "0").toUpperCase() ?? "00"}`}</p>
-            <p>Delay Timer: {debugState.DelayTimer ?? "0"}</p>
-            <p>Sound Timer: {debugState.SoundTimer ?? "0"}</p>
+    <!-- Middle Column -->
+    <div class="lg:col-span-1 flex flex-col space-y-3">
+        <!-- Disassembly -->
+        <div class="bg-gray-800 p-3 rounded-md border border-gray-700 flex-grow flex flex-col">
+            <h3 class="font-semibold text-md mb-2 text-gray-400">Disassembly</h3>
+            <pre class="text-xs leading-snug overflow-y-auto bg-gray-900 p-2 rounded-md border border-gray-700 flex-grow font-mono">
+                {#each debugState.Disassembly || [] as line}
+                    {@const address = parseInt(line.split(":")[0].replace("► ", ""), 16)}
+                    <div
+                        class="cursor-pointer hover:bg-gray-700 px-1 rounded-sm"
+                        class:text-cyan-300={line.startsWith("►")}
+                        class:font-bold={line.startsWith("►")}
+                        class:bg-red-800={debugState.Breakpoints && debugState.Breakpoints[address]}
+                        class:hover:bg-red-700={debugState.Breakpoints && debugState.Breakpoints[address]}
+                        on:click={() => toggleBreakpoint(address)}
+                        title="Click to toggle breakpoint"
+                    >{line}</div>
+                {/each}
+            </pre>
         </div>
     </div>
 
-    <!-- Stack -->
-    <div class="p-2 bg-[#34495e] rounded-lg border border-gray-700">
-        <h3 class="font-bold text-lg mb-2">Stack</h3>
-        <pre class="text-sm overflow-y-auto h-24 bg-slate-800 p-2 rounded-md border border-slate-700 font-mono">
-            {#each debugState.Stack || [] as value, i}
-                <div class:text-cyan-400={i === (debugState.SP > 0 ? debugState.SP -1 : 0)}>Stack[{i.toString(16).toUpperCase()}]: 0x{value.toString(16).padStart(4, "0").toUpperCase()}</div>
-            {/each}
-        </pre>
-    </div>
-
-    <!-- Disassembly -->
-    <div class="p-2 bg-[#34495e] rounded-lg border border-gray-700 md:col-span-1">
-        <h3 class="font-bold text-lg mb-2">Disassembly</h3>
-        <pre class="text-xs leading-tight overflow-y-auto bg-slate-800 p-2 rounded-md border border-slate-700 h-64 font-mono">
-            {#each debugState.Disassembly || [] as line}
-                {@const address = parseInt(line.split(":")[0].replace("► ", ""), 16)}
-                <div
-                    class:text-cyan-400={line.startsWith("►")}
-                    class:bg-red-700={debugState.Breakpoints && debugState.Breakpoints[address]}
-                    on:click={() => toggleBreakpoint(address)}
-                    class="cursor-pointer hover:bg-gray-600"
-                >{line}</div>
-            {/each}
-        </pre>
-    </div>
-
-    <!-- Memory Viewer -->
-    <div class="p-2 bg-[#34495e] rounded-lg border border-gray-700 md:col-span-2">
-        <h3 class="font-bold text-lg mb-2">Memory Viewer (scroll to navigate)</h3>
-        <div class="text-sm overflow-hidden h-64 bg-slate-800 p-2 rounded-md border border-slate-700 font-mono" on:wheel={handleMemoryScroll}>
-            {#each Array(Math.ceil(memoryData.length / 16)) as _, rowIdx}
-                <div class="flex">
-                    <span class="text-gray-500 mr-2">{formatAddress(memoryOffset + rowIdx * 16)}:</span>
-                    {#each Array(16) as _, colIdx}
-                        {@const byte = memoryData[rowIdx * 16 + colIdx]}
-                        <span class="mr-1">{byte !== undefined ? formatByte(byte) : "--"}</span>
-                    {/each}
-                </div>
-            {/each}
+    <!-- Right Column -->
+    <div class="lg:col-span-1 flex flex-col space-y-3">
+        <!-- Memory Viewer -->
+        <div class="bg-gray-800 p-3 rounded-md border border-gray-700 flex-grow flex flex-col">
+            <h3 class="font-semibold text-md mb-2 text-gray-400">Memory Viewer</h3>
+            <div class="text-xs overflow-y-auto bg-gray-900 p-2 rounded-md border border-gray-700 flex-grow font-mono" on:wheel={handleMemoryScroll}>
+                {#each Array(Math.ceil(memoryData.length / 16)) as _, rowIdx}
+                    <div class="flex whitespace-pre">
+                        <span class="text-gray-500 mr-2">{formatAddress(memoryOffset + rowIdx * 16)}:</span>
+                        <div class="flex-grow grid grid-cols-16">
+                            {#each Array(16) as _, colIdx}
+                                {@const byte = memoryData[rowIdx * 16 + colIdx]}
+                                <span class="mr-1">{byte !== undefined ? formatByte(byte) : "--"}</span>
+                            {/each}
+                        </div>
+                    </div>
+                {/each}
+            </div>
         </div>
     </div>
 
-    <!-- Logs -->
-    <div class="p-2 bg-[#34495e] rounded-lg border border-gray-700 col-span-3">
-        <h3 class="font-bold text-lg mb-2">Application Logs</h3>
+    <!-- Logs (Full Width) -->
+    <div class="lg:col-span-3 bg-gray-800 p-3 rounded-md border border-gray-700">
+        <h3 class="font-semibold text-md mb-2 text-gray-400">Application Logs</h3>
         <LogViewer />
     </div>
 </div>

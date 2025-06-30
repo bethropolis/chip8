@@ -1,6 +1,17 @@
 <script>
     import { onMount, onDestroy } from "svelte";
-    import { EventsOn } from "./wailsjs/runtime/runtime.js";
+    import {
+        EventsOn,
+        WindowFullscreen,
+        WindowUnfullscreen,
+        WindowIsFullscreen,
+        WindowMinimise,
+        WindowUnminimise,
+        WindowMaximise,
+        WindowUnmaximise,
+        WindowIsMaximised,
+        Quit,
+    } from "./wailsjs/runtime/runtime.js";
     import {
         TogglePause,
         KeyDown,
@@ -27,6 +38,10 @@
         Camera,
         Save,
         Upload,
+        Minimize,
+        Maximize,
+        X,
+        Copy,
     } from "lucide-svelte";
 
     // --- UI Elements & State ---
@@ -55,6 +70,26 @@
     let notificationMessage = "";
     let notificationType = "info";
     let showResetOptions = false;
+    let isMaximized = false;
+
+    const keypadLayout = [
+        { hex: 0x1, key: "1", keyboardKey: "1" },
+        { hex: 0x2, key: "2", keyboardKey: "2" },
+        { hex: 0x3, key: "3", keyboardKey: "3" },
+        { hex: 0xc, key: "C", keyboardKey: "4" },
+        { hex: 0x4, key: "4", keyboardKey: "Q" },
+        { hex: 0x5, key: "5", keyboardKey: "W" },
+        { hex: 0x6, key: "6", keyboardKey: "E" },
+        { hex: 0xd, key: "D", keyboardKey: "R" },
+        { hex: 0x7, key: "7", keyboardKey: "A" },
+        { hex: 0x8, key: "8", keyboardKey: "S" },
+        { hex: 0x9, key: "9", keyboardKey: "D" },
+        { hex: 0xe, key: "E", keyboardKey: "F" },
+        { hex: 0xa, key: "A", keyboardKey: "Z" },
+        { hex: 0x0, key: "0", keyboardKey: "X" },
+        { hex: 0xb, key: "B", keyboardKey: "C" },
+        { hex: 0xf, key: "F", keyboardKey: "V" },
+    ];
 
     // --- Display Constants ---
     const SCALE = 10;
@@ -130,6 +165,12 @@
     }
 
     onMount(async () => {
+        isMaximized = await WindowIsMaximised();
+
+        EventsOn("wails:file-drop", handleFileDrop);
+        EventsOn("menu:loadrom", handleLoadState);
+        EventsOn("menu:pause", handleTogglePause);
+
         EventsOn("displayUpdate", (base64DisplayBuffer) => {
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
             animationFrameId = requestAnimationFrame(() => {
@@ -163,7 +204,7 @@
         debugState = initialState;
         drawDisplay(
             canvasElement,
-            new Uint8Array(DISPLAY_WIDTH * DISPLAY_HEIGHT),
+            new Uint8Array(DISPLAY_WIDTH * DISPLAY_HEIGHT)
         );
     });
 
@@ -291,181 +332,258 @@
         }
         showResetOptions = false;
     }
+
+    async function handleFileDrop(event) {
+        if (event.data.length > 0) {
+            const romName = event.data[0].split("/").pop();
+            try {
+                await LoadROM(romName);
+                showNotification(`Successfully loaded ${romName}`, "success");
+            } catch (error) {
+                showNotification(`Failed to load ROM: ${error}`, "error");
+            }
+        }
+    }
+
+    async function toggleMaximize() {
+        if (await WindowIsMaximised()) {
+            WindowUnmaximise();
+        } else {
+            WindowMaximise();
+        }
+        isMaximized = !isMaximized;
+    }
+
+    function handleKeypadPress(key) {
+        KeyDown(key);
+        pressedKeys = { ...pressedKeys, [key]: true };
+    }
+
+    function handleKeypadRelease(key) {
+        KeyUp(key);
+        pressedKeys = { ...pressedKeys, [key]: false };
+    }
 </script>
 
-<div
-    class="flex flex-col h-screen bg-gray-900 text-gray-100 font-sans antialiased"
->
-    <!-- Top Bar -->
-    <header class="flex-none bg-gray-800 text-gray-100 shadow-lg z-10">
-        <div
-            class="container mx-auto px-4 py-3 flex items-center justify-between"
+    <div
+        class="flex flex-col h-screen bg-gray-800 text-gray-200 font-sans antialiased"
+    >
+        <!-- Custom Title Bar -->
+        <header
+            style="--wails-draggable:drag"
+            class="flex-none bg-gray-900 text-gray-200 shadow-md z-20 flex items-center justify-between pr-2"
         >
-            <div class="flex items-center space-x-4">
-                <h1 class="text-2xl font-bold text-cyan-400">
-                    CHIP-8 Emulator
-                </h1>
-                <nav class="flex space-x-2">
+            <div class="flex items-center">
+                <!-- App Icon and Title -->
+                <div class="p-2 flex items-center space-x-2">
+                    <img src="/appicon.png" alt="App Icon" class="h-5 w-5" />
+                    <h1 class="text-md font-semibold text-gray-300">
+                        CHIP-8 Emulator
+                    </h1>
+                </div>
+                <!-- Tabs -->
+                <nav class="flex space-x-1">
                     <button
                         on:click={() => (currentTab = "emulator")}
-                        class="px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-                        class:bg-blue-600={currentTab === "emulator"}
-                        class:hover:bg-blue-700={currentTab === "emulator"}
+                        class="px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200"
+                        class:bg-gray-700={currentTab === "emulator"}
                         class:text-white={currentTab === "emulator"}
-                        class:text-gray-300={currentTab !== "emulator"}
+                        class:text-gray-400={currentTab !== "emulator"}
+                        class:hover:bg-gray-700={currentTab !== "emulator"}
                         class:hover:text-white={currentTab !== "emulator"}
                         >Emulator</button
                     >
                     <button
                         on:click={() => (currentTab = "debug")}
-                        class="px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-                        class:bg-blue-600={currentTab === "debug"}
-                        class:hover:bg-blue-700={currentTab === "debug"}
+                        class="px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200"
+                        class:bg-gray-700={currentTab === "debug"}
                         class:text-white={currentTab === "debug"}
-                        class:text-gray-300={currentTab !== "debug"}
+                        class:text-gray-400={currentTab !== "debug"}
+                        class:hover:bg-gray-700={currentTab !== "debug"}
                         class:hover:text-white={currentTab !== "debug"}
                         >Debug</button
                     >
                 </nav>
             </div>
-            <button
-                on:click={openSettings}
-                class="p-2 rounded-full hover:bg-gray-700 transition-colors duration-200"
-                title="Settings"
-            >
-                <Settings size={20} />
-            </button>
-        </div>
-    </header>
 
-    <!-- Main Content Area -->
-    <main class="flex-grow overflow-hidden">
-        {#if currentTab === "emulator"}
-            <div
-                class="flex flex-col md:flex-row h-full p-4 space-y-4 md:space-y-0 md:space-x-4"
-            >
-                <section
-                    class="flex-grow flex items-center justify-center bg-gray-800 rounded-lg shadow-md p-4"
+            <!-- Window Controls -->
+            <div class="flex items-center space-x-1">
+                <button
+                    on:click={openSettings}
+                    class="p-2 rounded-md hover:bg-gray-700 transition-colors duration-200"
+                    title="Settings"
                 >
-                    <canvas
-                        bind:this={canvasElement}
-                        width={DISPLAY_WIDTH * SCALE}
-                        height={DISPLAY_HEIGHT * SCALE}
-                        class="border-2 border-cyan-500 rounded-md"
-                    ></canvas>
-                </section>
-                <aside class="flex-none w-full md:w-80 flex flex-col space-y-4">
-                    <ROMBrowser {showNotification} />
-                    <div class="bg-gray-800 p-4 rounded-lg shadow-md">
-                        <h2
-                            class="text-xl font-semibold mb-3 text-center text-cyan-400"
-                        >
-                            Controls
-                        </h2>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="relative inline-block text-left">
-                                <button
-                                    on:click={toggleResetOptions}
-                                    class="flex items-center justify-center space-x-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200 w-full"
-                                    title="Reset Options"
-                                >
-                                    <RotateCcw size={18} />
-                                    <span>Reset</span>
-                                </button>
-                                {#if showResetOptions}
-                                    <div
-                                        class="origin-top-right absolute right-0 mt-2 w-full rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
-                                    >
-                                        <div class="py-1">
-                                            <button
-                                                on:click={handleSoftReset}
-                                                class="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-600"
-                                                >Soft Reset</button
-                                            >
-                                            <button
-                                                on:click={handleHardReset}
-                                                class="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-600"
-                                                >Hard Reset</button
-                                            >
-                                        </div>
-                                    </div>
-                                {/if}
-                            </div>
-                            <button
-                                on:click={handleTogglePause}
-                                class="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-                                title={isPaused
-                                    ? "Resume emulation"
-                                    : "Pause emulation"}
-                            >
-                                {#if isPaused}<Play size={18} /><span
-                                        >Resume</span
-                                    >{:else}<Pause size={18} /><span>Pause</span
-                                    >{/if}
-                            </button>
-                            <button
-                                on:click={handleScreenshot}
-                                class="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200 col-span-2"
-                                title="Take a screenshot"
-                                ><Camera size={18} /><span>Screenshot</span
-                                ></button
-                            >
-                            <button
-                                on:click={handleSaveState}
-                                class="flex items-center justify-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-                                title="Save State"
-                                ><Save size={18} /><span>Save State</span
-                                ></button
-                            >
-                            <button
-                                on:click={handleLoadState}
-                                class="flex items-center justify-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-                                title="Load State"
-                                ><Upload size={18} /><span>Load State</span
-                                ></button
-                            >
-                        </div>
-                    </div>
-                    <div class="bg-gray-800 p-4 rounded-lg shadow-md">
-                        <h2
-                            class="text-xl font-semibold mb-3 text-center text-cyan-400"
-                        >
-                            CHIP-8 Keypad
-                        </h2>
-                        <div class="grid grid-cols-4 gap-2 text-center">
-                            {#each [1, 2, 3, 0xc, 4, 5, 6, 0xd, 7, 8, 9, 0xe, 0xa, 0, 0xb, 0xf] as chip8Key}
-                                <div
-                                    class="bg-gray-700 p-3 rounded-md border border-gray-600 text-lg font-bold flex items-center justify-center aspect-square transition-colors duration-100"
-                                    class:bg-blue-500={pressedKeys[chip8Key]}
-                                    class:border-blue-400={pressedKeys[
-                                        chip8Key
-                                    ]}
-                                >
-                                    {chip8Key.toString(16).toUpperCase()}
-                                </div>
-                            {/each}
-                        </div>
-                        <p class="text-xs text-center mt-3 text-gray-400">
-                            Keys: 1-4, Q-R, A-F, Z-V
-                        </p>
-                    </div>
-                </aside>
+                    <Settings size={16} />
+                </button>
+                <button
+                    on:click={WindowMinimise}
+                    class="p-2 rounded-md hover:bg-gray-700 transition-colors duration-200"
+                    title="Minimize"
+                >
+                    <Minimize size={16} />
+                </button>
+                <button
+                    on:click={toggleMaximize}
+                    class="p-2 rounded-md hover:bg-gray-700 transition-colors duration-200"
+                    title={isMaximized ? "Restore" : "Maximize"}
+                >
+                    {#if isMaximized}
+                        <Copy size={16} />
+                    {:else}
+                        <Maximize size={16} />
+                    {/if}
+                </button>
+                <button
+                    on:click={Quit}
+                    class="p-2 rounded-md hover:bg-red-600 transition-colors duration-200"
+                    title="Quit"
+                >
+                    <X size={16} />
+                </button>
             </div>
-        {:else if currentTab === "debug"}
-            <DebugPanel bind:debugState />
-        {/if}
-    </main>
-    <footer
-        class="flex-none bg-gray-800 text-gray-300 text-sm text-center py-3 shadow-inner"
-    >
-        {statusMessage}
-    </footer>
-    <Notification
-        message={notificationMessage}
-        type={notificationType}
-        on:dismiss={dismissNotification}
-    />
-</div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-grow overflow-hidden">
+            {#if currentTab === "emulator"}
+                <div
+                    class="flex flex-col md:flex-row h-full p-3 space-y-3 md:space-y-0 md:space-x-3"
+                >
+                    <section
+                        class="flex-grow flex items-center justify-center bg-gray-900 rounded-md shadow-inner p-3"
+                    >
+                        <canvas
+                            bind:this={canvasElement}
+                            width={DISPLAY_WIDTH * SCALE}
+                            height={DISPLAY_HEIGHT * SCALE}
+                            class="border border-gray-700 rounded-sm"
+                        ></canvas>
+                    </section>
+                    <aside
+                        class="flex-none w-full md:w-72 flex flex-col space-y-3"
+                    >
+                        <ROMBrowser {showNotification} />
+                        <div class="bg-gray-900 p-3 rounded-md shadow-inner">
+                            <h2
+                                class="text-lg font-semibold mb-2 text-center text-gray-400"
+                            >
+                                Controls
+                            </h2>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="relative inline-block text-left">
+                                    <button
+                                        on:click={toggleResetOptions}
+                                        class="flex items-center justify-center space-x-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-3 rounded-md transition-colors duration-200 w-full text-sm"
+                                        title="Reset Options"
+                                    >
+                                        <RotateCcw size={16} />
+                                        <span>Reset</span>
+                                    </button>
+                                    {#if showResetOptions}
+                                        <div
+                                            class="origin-top-right absolute right-0 mt-1 w-full rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
+                                        >
+                                            <div class="py-1">
+                                                <button
+                                                    on:click={handleSoftReset}
+                                                    class="block w-full text-left px-3 py-1 text-sm text-gray-200 hover:bg-gray-600"
+                                                    >Soft Reset</button
+                                                >
+                                                <button
+                                                    on:click={handleHardReset}
+                                                    class="block w-full text-left px-3 py-1 text-sm text-gray-200 hover:bg-gray-600"
+                                                    >Hard Reset</button
+                                                >
+                                            </div>
+                                        </div>
+                                    {/if}
+                                </div>
+                                <button
+                                    on:click={handleTogglePause}
+                                    class="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-md transition-colors duration-200 text-sm"
+                                    title={isPaused
+                                        ? "Resume emulation (Ctrl+P)"
+                                        : "Pause emulation (Ctrl+P)"}
+                                >
+                                    {#if isPaused}<Play size={16} /><span
+                                            >Resume</span
+                                        >{:else}<Pause size={16} /><span
+                                            >Pause</span
+                                        >{/if}
+                                </button>
+                                <button
+                                    on:click={handleScreenshot}
+                                    class="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-md transition-colors duration-200 col-span-2 text-sm"
+                                    title="Take a screenshot"
+                                    ><Camera size={16} /><span
+                                        >Screenshot</span
+                                    ></button
+                                >
+                                <button
+                                    on:click={handleSaveState}
+                                    class="flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-3 rounded-md transition-colors duration-200 text-sm"
+                                    title="Save State"
+                                    ><Save size={16} /><span>Save State</span
+                                    ></button
+                                >
+                                <button
+                                    on:click={handleLoadState}
+                                    class="flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-3 rounded-md transition-colors duration-200 text-sm"
+                                    title="Load State (Ctrl+O)"
+                                    ><Upload size={16} /><span
+                                        >Load State</span
+                                    ></button
+                                >
+                            </div>
+                        </div>
+                        <div class="bg-gray-900 p-3 rounded-md shadow-inner">
+                            <h2
+                                class="text-lg font-semibold mb-2 text-center text-gray-400"
+                            >
+                                CHIP-8 Keypad
+                            </h2>
+                            <div
+                                class="grid grid-cols-4 gap-2 text-center font-mono"
+                            >
+                                {#each keypadLayout as { hex, key, keyboardKey } (hex)}
+                                    <button
+                                        on:mousedown={() => handleKeypadPress(hex)}
+                                        on:mouseup={() => handleKeypadRelease(hex)}
+                                        on:mouseleave={() => handleKeypadRelease(hex)} 
+                                        class="p-2 rounded-md border text-lg font-bold flex flex-col items-center justify-center aspect-square transition-all duration-100 focus:outline-none"
+                                        class:bg-blue-500={pressedKeys[hex]}
+                                        class:border-blue-400={pressedKeys[hex]}
+                                        class:text-white={pressedKeys[hex]}
+                                        class:bg-gray-700={!pressedKeys[hex]}
+                                        class:border-gray-600={!pressedKeys[hex]}
+                                        class:hover:bg-gray-600={!pressedKeys[hex]}
+                                        title={`CHIP-8 Key: ${hex.toString(16).toUpperCase()}`}
+                                    >
+                                        <span class="text-xl">{key}</span>
+                                        <span class="text-xs text-gray-400 mt-1"
+                                            >{keyboardKey}</span
+                                        >
+                                    </button>
+                                {/each}
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            {:else if currentTab === "debug"}
+                <DebugPanel bind:debugState />
+            {/if}
+        </main>
+        <footer
+            class="flex-none bg-gray-900 text-gray-400 text-xs text-center py-2 shadow-inner border-t border-gray-800"
+        >
+            {statusMessage}
+        </footer>
+        <Notification
+            message={notificationMessage}
+            type={notificationType}
+            on:dismiss={dismissNotification}
+        />
+    </div>
 {#if showSettingsModal}
     <SettingsModal
         bind:showModal={showSettingsModal}
