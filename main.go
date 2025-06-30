@@ -18,9 +18,10 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  "chip8-wails",
-		Width:  1280,
-		Height: 800,
+		Title:            "chip8-wails",
+		Width:            1280,
+		Height:           800,
+		Frameless:        true, // Frameless window
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
