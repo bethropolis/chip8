@@ -58,6 +58,10 @@ export function LoadStateFromFile() {
   return window['go']['main']['App']['LoadStateFromFile']();
 }
 
+export function OpenGitHubLink() {
+  return window['go']['main']['App']['OpenGitHubLink']();
+}
+
 export function PlayBeep() {
   return window['go']['main']['App']['PlayBeep']();
 }
@@ -90,8 +94,20 @@ export function SetClockSpeed(arg1) {
   return window['go']['main']['App']['SetClockSpeed'](arg1);
 }
 
+export function ShowAboutDialog() {
+  return window['go']['main']['App']['ShowAboutDialog']();
+}
+
 export function SoftReset() {
   return window['go']['main']['App']['SoftReset']();
+}
+
+export function StartDebugUpdates() {
+  return window['go']['main']['App']['StartDebugUpdates']();
+}
+
+export function StopDebugUpdates() {
+  return window['go']['main']['App']['StopDebugUpdates']();
 }
 
 export function TogglePause() {

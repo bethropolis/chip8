@@ -78,3 +78,31 @@ export async function updateAndSaveSettings(newSettings) {
     console.error("Settings save error:", error);
   }
 }
+
+/**
+ * Initializes the settings store.
+ * If initialSettings are provided (from backend), they are used.
+ * Otherwise, default settings are applied.
+ * @param {object | null} initialSettings - Settings fetched from the backend, or null.
+ */
+export function initializeSettings(initialSettings) {
+  console.log("Initializing settings with: ", initialSettings);
+  settings.update((currentSettings) => {
+    // Start with current settings (which are defaults if not yet loaded)
+    const mergedSettings = { ...currentSettings };
+
+    if (initialSettings) {
+      // Merge top-level properties
+      Object.assign(mergedSettings, initialSettings);
+
+      // Deep merge for keyMap
+      if (initialSettings.keyMap) {
+        mergedSettings.keyMap = {
+          ...currentSettings.keyMap,
+          ...initialSettings.keyMap,
+        };
+      }
+    }
+    return mergedSettings;
+  });
+}

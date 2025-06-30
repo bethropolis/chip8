@@ -294,6 +294,16 @@ func (c *Chip8) EmulateCycle() {
 	}
 }
 
+// UpdateTimers decrements the delay and sound timers if they are greater than 0.
+func (c *Chip8) UpdateTimers() {
+	if c.DelayTimer > 0 {
+		c.DelayTimer--
+	}
+	if c.SoundTimer > 0 {
+		c.SoundTimer--
+	}
+}
+
 // ClearDrawFlag resets the draw flag.
 func (c *Chip8) ClearDrawFlag() {
 	c.DrawFlag = false

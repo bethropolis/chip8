@@ -5,19 +5,6 @@ chip8-wails/
 ├── chip8/
 │   ├── chip8.go
 │   └── chip8_test.go
-├── frontend/
-│   └── src/
-│       ├── lib/
-│       │   ├── DebugPanel.svelte
-│       │   ├── EmulatorView.svelte
-│       │   ├── Header.svelte
-│       │   ├── LogViewer.svelte
-│       │   ├── Notification.svelte
-│       │   ├── ROMBrowser.svelte
-│       │   ├── SettingsModal.svelte
-│       │   ├── clickOutside.js
-│       │   └── stores.js
-│       └── App.svelte
 ├── app.go
 └── main.go
 ```
@@ -320,6 +307,16 @@ func (c *Chip8) EmulateCycle() {
 		}
 	default:
 		fmt.Printf("Unknown opcode: 0x%04X\n", opcode)
+	}
+}
+
+// UpdateTimers decrements the delay and sound timers if they are greater than 0.
+func (c *Chip8) UpdateTimers() {
+	if c.DelayTimer > 0 {
+		c.DelayTimer--
+	}
+	if c.SoundTimer > 0 {
+		c.SoundTimer--
 	}
 }
 
@@ -674,1487 +671,6 @@ func TestOpcodeDXYN(t *testing.T) {
 
 ```
 
-## File: `frontend/src/lib/DebugPanel.svelte`
-
-```svelte
-<script>
-    import { onMount, onDestroy } from 'svelte';
-    import { GetMemory, GetLogs, SetBreakpoint, ClearBreakpoint } from '../wailsjs/go/main/App';
-    import { EventsOn } from '../wailsjs/runtime/runtime.js';
-    import LogViewer from './LogViewer.svelte';
-
-    export let debugState;
-
-    let memoryData = new Uint8Array(256);
-    let memoryOffset = 0x200; // Start at program memory
-    let memoryLimit = 256;
-    let memoryUpdateInterval;
-
-    async function fetchMemoryView() {
-        if (!debugState.PC) return; // Don't fetch if no ROM is loaded
-        try {
-            const data = await GetMemory(memoryOffset, memoryLimit);
-            if (data) {
-                memoryData = new Uint8Array(atob(data).split('').map(char => char.charCodeAt(0)));
-            }
-        } catch (error) {
-            console.error("Failed to fetch memory view:", error);
-        }
-    }
-
-    onMount(() => {
-        memoryUpdateInterval = setInterval(fetchMemoryView, 200);
-    });
-
-    onDestroy(() => {
-        clearInterval(memoryUpdateInterval);
-    });
-
-    function formatByte(byte) {
-        return byte.toString(16).padStart(2, '0').toUpperCase();
-    }
-
-    function formatAddress(address) {
-        return '0x' + address.toString(16).padStart(4, '0').toUpperCase();
-    }
-
-    function handleMemoryScroll(event) {
-        const target = event.target;
-        if (event.deltaY > 0) {
-            memoryOffset += 16;
-        } else {
-            memoryOffset -= 16;
-        }
-
-        if (memoryOffset < 0) memoryOffset = 0;
-        if (memoryOffset > 4096 - memoryLimit) memoryOffset = 4096 - memoryLimit;
-
-        event.preventDefault();
-        fetchMemoryView();
-    }
-
-    async function toggleBreakpoint(address) {
-        if (debugState.Breakpoints && debugState.Breakpoints[address]) {
-            await ClearBreakpoint(address);
-        } else {
-            await SetBreakpoint(address);
-        }
-    }
-</script>
-
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-3 p-3 h-full overflow-y-auto bg-gray-900 text-gray-300 font-sans">
-    
-    <!-- Left Column -->
-    <div class="lg:col-span-1 flex flex-col space-y-3">
-        <!-- CPU State -->
-        <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
-            <h3 class="font-semibold text-md mb-2 text-gray-400">CPU State</h3>
-            <div class="grid grid-cols-2 gap-x-4 text-sm font-mono">
-                <p>PC: <span class="text-cyan-400">{formatAddress(debugState.PC ?? 0)}</span></p>
-                <p>I: <span class="text-cyan-400">{formatAddress(debugState.I ?? 0)}</span></p>
-                <p>SP: <span class="text-cyan-400">{formatAddress(debugState.SP ?? 0)}</span></p>
-            </div>
-        </div>
-
-        <!-- Timers -->
-        <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
-            <h3 class="font-semibold text-md mb-2 text-gray-400">Timers</h3>
-            <div class="grid grid-cols-2 gap-x-4 text-sm font-mono">
-                <p>Delay: <span class="text-green-400">{debugState.DelayTimer ?? 0}</span></p>
-                <p>Sound: <span class="text-green-400">{debugState.SoundTimer ?? 0}</span></p>
-            </div>
-        </div>
-
-        <!-- Registers -->
-        <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
-            <h3 class="font-semibold text-md mb-2 text-gray-400">Registers</h3>
-            <div class="grid grid-cols-4 gap-x-2 gap-y-1 text-sm font-mono">
-                {#each { length: 16 } as _, i}
-                    <span>V{i.toString(16).toUpperCase()}: <span class="text-yellow-400">{`0x${debugState.Registers?.[i]?.toString(16).padStart(2, "0").toUpperCase() ?? "00"}`}</span></span>
-                {/each}
-            </div>
-        </div>
-
-        <!-- Stack -->
-        <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
-            <h3 class="font-semibold text-md mb-2 text-gray-400">Stack</h3>
-            <pre class="text-xs overflow-y-auto h-28 bg-gray-900 p-2 rounded-md border border-gray-700 font-mono">
-                {#each debugState.Stack || [] as value, i}
-                    <div class:text-cyan-300={i === (debugState.SP > 0 ? debugState.SP -1 : 0)} class:font-bold={i === (debugState.SP > 0 ? debugState.SP -1 : 0)}>Stack[{i.toString(16).toUpperCase()}]: {formatAddress(value)}</div>
-                {/each}
-            </pre>
-        </div>
-    </div>
-
-    <!-- Middle Column -->
-    <div class="lg:col-span-1 flex flex-col space-y-3">
-        <!-- Disassembly -->
-        <div class="bg-gray-800 p-3 rounded-md border border-gray-700 flex-grow flex flex-col">
-            <h3 class="font-semibold text-md mb-2 text-gray-400">Disassembly</h3>
-            <pre class="text-xs leading-snug overflow-y-auto bg-gray-900 p-2 rounded-md border border-gray-700 flex-grow font-mono">
-                {#each debugState.Disassembly || [] as line}
-                    {@const address = parseInt(line.split(":")[0].replace("► ", ""), 16)}
-                    <div
-                        class="cursor-pointer hover:bg-gray-700 px-1 rounded-sm"
-                        class:text-cyan-300={line.startsWith("►")}
-                        class:font-bold={line.startsWith("►")}
-                        class:bg-red-800={debugState.Breakpoints && debugState.Breakpoints[address]}
-                        class:hover:bg-red-700={debugState.Breakpoints && debugState.Breakpoints[address]}
-                        on:click={() => toggleBreakpoint(address)}
-                        title="Click to toggle breakpoint"
-                    >{line}</div>
-                {/each}
-            </pre>
-        </div>
-    </div>
-
-    <!-- Right Column -->
-    <div class="lg:col-span-1 flex flex-col space-y-3">
-        <!-- Memory Viewer -->
-        <div class="bg-gray-800 p-3 rounded-md border border-gray-700 flex-grow flex flex-col">
-            <h3 class="font-semibold text-md mb-2 text-gray-400">Memory Viewer</h3>
-            <div class="text-xs overflow-y-auto bg-gray-900 p-2 rounded-md border border-gray-700 flex-grow font-mono" on:wheel={handleMemoryScroll}>
-                {#each Array(Math.ceil(memoryData.length / 16)) as _, rowIdx}
-                    <div class="flex whitespace-pre">
-                        <span class="text-gray-500 mr-2">{formatAddress(memoryOffset + rowIdx * 16)}:</span>
-                        <div class="flex-grow grid grid-cols-16">
-                            {#each Array(16) as _, colIdx}
-                                {@const byte = memoryData[rowIdx * 16 + colIdx]}
-                                <span class="mr-1">{byte !== undefined ? formatByte(byte) : "--"}</span>
-                            {/each}
-                        </div>
-                    </div>
-                {/each}
-            </div>
-        </div>
-    </div>
-
-    <!-- Logs (Full Width) -->
-    <div class="lg:col-span-3 bg-gray-800 p-3 rounded-md border border-gray-700">
-        <h3 class="font-semibold text-md mb-2 text-gray-400">Application Logs</h3>
-        <LogViewer />
-    </div>
-</div>
-```
-
-## File: `frontend/src/lib/EmulatorView.svelte`
-
-```svelte
-<script>
-    import {
-        Camera,
-        Pause,
-        Play,
-        RotateCcw,
-        Save,
-        Upload,
-    } from "lucide-svelte";
-    import { createEventDispatcher, onDestroy, onMount } from "svelte";
-    import { settings, showNotification } from "./stores.js";
-    import Gamepad from "svelte-gamepad";
-    import {
-        HardReset,
-        KeyDown,
-        KeyUp,
-        LoadROM,
-        LoadStateFromFile,
-        SaveScreenshot,
-        SaveState,
-        SaveStateToFile,
-        SoftReset,
-        TogglePause,
-    } from "../wailsjs/go/main/App.js";
-    import { EventsOn } from "../wailsjs/runtime/runtime.js";
-    import { clickOutside } from "./clickOutside.js";
-    import ROMBrowser from "./ROMBrowser.svelte";
-
-    const dispatch = createEventDispatcher();
-
-
-    // --- State from the store ---
-    $: keyMap = $settings.keyMap;
-    $: currentDisplayColor = $settings.displayColor;
-    $: currentScanlineEffect = $settings.scanlineEffect;
-
-    let canvasElement;
-    let isPaused = true;
-    let currentDisplayBuffer = new Uint8Array(64 * 32);
-    let showResetOptions = false;
-
-    /** @type {{hex: number, key: string, keyboardKey: string}[]} */
-    const keypadLayout = [
-        { hex: 0x1, key: "1", keyboardKey: "1" },
-        { hex: 0x2, key: "2", keyboardKey: "2" },
-        { hex: 0x3, key: "3", keyboardKey: "3" },
-        { hex: 0xc, key: "C", keyboardKey: "4" },
-        { hex: 0x4, key: "4", keyboardKey: "Q" },
-        { hex: 0x5, key: "5", keyboardKey: "W" },
-        { hex: 0x6, key: "6", keyboardKey: "E" },
-        { hex: 0xd, key: "D", keyboardKey: "R" },
-        { hex: 0x7, key: "7", keyboardKey: "A" },
-        { hex: 0x8, key: "8", keyboardKey: "S" },
-        { hex: 0x9, key: "9", keyboardKey: "D" },
-        { hex: 0xe, key: "E", keyboardKey: "F" },
-        { hex: 0xa, key: "A", keyboardKey: "Z" },
-        { hex: 0x0, key: "0", keyboardKey: "X" },
-        { hex: 0xb, key: "B", keyboardKey: "C" },
-        { hex: 0xf, key: "F", keyboardKey: "V" },
-    ];
-
-    /** @type {Record<string, number>} */
-    const gamepadMap = {
-        A: 0x5,
-        B: 0x6,
-        X: 0x8,
-        Y: 0x9,
-        DpadUp: 0x2,
-        DpadDown: 0x8,
-        DpadLeft: 0x7,
-        DpadRight: 0x9,
-    };
-
-    let pressedKeys = {};
-
-    const SCALE = 10;
-    const DISPLAY_WIDTH = 64;
-    const DISPLAY_HEIGHT = 32;
-
-    let audioContext;
-    let oscillator;
-    let animationFrameId;
-
-    /** Play a short beep using Web Audio API. */
-    function playBeep() {
-        if (!audioContext) {
-            audioContext = new (window.AudioContext ||
-                window.webkitAudioContext)();
-        }
-        if (oscillator) {
-            oscillator.stop();
-            oscillator.disconnect();
-        }
-        oscillator = audioContext.createOscillator();
-        oscillator.type = "sine";
-        oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
-        oscillator.connect(audioContext.destination);
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.1);
-    }
-
-    /**
-     * Draw the CHIP-8 display buffer to the canvas.
-     * @param {HTMLCanvasElement} canvas
-     * @param {Uint8Array} displayBuffer
-     */
-    function drawDisplay(canvas, displayBuffer) {
-        if (!canvas || !displayBuffer) return;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.fillStyle = currentDisplayColor;
-        for (let y = 0; y < DISPLAY_HEIGHT; y++) {
-            for (let x = 0; x < DISPLAY_WIDTH; x++) {
-                if (displayBuffer[y * DISPLAY_WIDTH + x]) {
-                    ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE);
-                }
-            }
-        }
-
-        if (currentScanlineEffect) {
-            ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-            for (let y = 0; y < DISPLAY_HEIGHT; y += 2) {
-                ctx.fillRect(0, y * SCALE, canvas.width, SCALE);
-            }
-        }
-    }
-
-    onMount(async () => {
-        EventsOn("wails:file-drop", handleFileDrop);
-        EventsOn("menu:pause", handleTogglePause);
-
-        EventsOn("displayUpdate", (base64DisplayBuffer) => {
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
-            animationFrameId = requestAnimationFrame(() => {
-                const binaryString = atob(base64DisplayBuffer);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-                currentDisplayBuffer = bytes;
-                drawDisplay(canvasElement, currentDisplayBuffer);
-            });
-        });
-
-        EventsOn("playBeep", playBeep);
-
-        drawDisplay(
-            canvasElement,
-            new Uint8Array(DISPLAY_WIDTH * DISPLAY_HEIGHT),
-        );
-    });
-
-    $: if (canvasElement) {
-        drawDisplay(canvasElement, currentDisplayBuffer);
-    }
-
-    let reverseKeyMap = {};
-    $: {
-        reverseKeyMap = {};
-        for (const [keyboardKey, chip8Key] of Object.entries($settings.keyMap)) {
-            reverseKeyMap[keyboardKey] = chip8Key;
-        }
-    }
-
-    window.addEventListener("keydown", (e) => {
-        const key = e.key.toLowerCase();
-        const chip8Key = reverseKeyMap[key];
-        if (chip8Key !== undefined) {
-            e.preventDefault();
-            KeyDown(chip8Key);
-            pressedKeys = { ...pressedKeys, [chip8Key]: true };
-        }
-    });
-
-    window.addEventListener("keyup", (e) => {
-        const key = e.key.toLowerCase();
-        const chip8Key = reverseKeyMap[key];
-        if (chip8Key !== undefined) {
-            e.preventDefault();
-            KeyUp(chip8Key);
-            pressedKeys = { ...pressedKeys, [chip8Key]: false };
-        }
-    });
-
-    /** Toggle emulator pause state. */
-    async function handleTogglePause() {
-        isPaused = await TogglePause();
-    }
-
-    /** Save a screenshot of the current canvas. */
-    async function handleScreenshot() {
-        if (!canvasElement) {
-            showNotification("Canvas not available for screenshot.", "error");
-            return;
-        }
-        try {
-            const dataURL = canvasElement.toDataURL("image/png");
-            const base64Data = dataURL.split(",")[1];
-            await SaveScreenshot(base64Data);
-            showNotification("Screenshot saved!", "success");
-        } catch (error) {
-            showNotification(`Failed to save screenshot: ${error}`, "error");
-        }
-    }
-
-    /** Save emulator state to file. */
-    async function handleSaveState() {
-        try {
-            const state = await SaveState();
-            await SaveStateToFile(state);
-            showNotification("Emulator state saved!", "success");
-        } catch (error) {
-            showNotification(`Failed to save state: ${error}`, "error");
-        }
-    }
-
-    /** Load emulator state from file. */
-    async function handleLoadState() {
-        try {
-            await LoadStateFromFile();
-            showNotification("Emulator state loaded!", "success");
-        } catch (error) {
-            showNotification(`Failed to load state: ${error}`, "error");
-        }
-    }
-
-    function toggleResetOptions() {
-        showResetOptions = !showResetOptions;
-    }
-
-    /** Perform a soft reset (reload ROM). */
-    async function handleSoftReset() {
-        try {
-            await SoftReset();
-            isPaused = false;
-            showNotification("Soft reset complete! ROM reloaded.", "success");
-        } catch (error) {
-            showNotification(`Soft reset failed: ${error}`, "error");
-        }
-        showResetOptions = false;
-    }
-
-    /** Perform a hard reset (clear ROM). */
-    async function handleHardReset() {
-        try {
-            await HardReset();
-            isPaused = true;
-            showNotification("Hard reset complete! ROM cleared.", "info");
-        } catch (error) {
-            showNotification(`Hard reset failed: ${error}`, "error");
-        }
-        showResetOptions = false;
-    }
-
-    /**
-     * Handle file drop event for loading ROMs.
-     * @param {any} event
-     */
-    async function handleFileDrop(event) {
-        if (event.data.length > 0) {
-            const romName = event.data[0].split("/").pop();
-            try {
-                await LoadROM(romName);
-                showNotification(`Successfully loaded ${romName}`, "success");
-            } catch (error) {
-                showNotification(`Failed to load ROM: ${error}`, "error");
-            }
-        }
-    }
-
-    /** @param {CustomEvent} e */
-    function onGamepadConnected(e) {
-        showNotification(
-            `Gamepad ${e.detail.gamepadIndex + 1} connected.`,
-            "success",
-        );
-    }
-
-    /** @param {CustomEvent} e */
-    function onGamepadDisconnected(e) {
-        showNotification(
-            `Gamepad ${e.detail.gamepadIndex + 1} disconnected.`,
-            "warning",
-        );
-    }
-
-    /** @param {CustomEvent} e */
-    function handleGamepadButton(e) {
-        const chip8Key = gamepadMap[e.type];
-        if (chip8Key !== undefined) {
-            if (e.detail.pressed) {
-                handleKeypadPress(chip8Key);
-            } else {
-                handleKeypadRelease(chip8Key);
-            }
-        }
-    }
-
-    /**
-     * Handle keypad press for CHIP-8 key.
-     * @param {number} key
-     */
-    function handleKeypadPress(key) {
-        KeyDown(key);
-        pressedKeys = { ...pressedKeys, [key]: true };
-    }
-
-    /**
-     * Handle keypad release for CHIP-8 key.
-     * @param {number} key
-     */
-    function handleKeypadRelease(key) {
-        KeyUp(key);
-        pressedKeys = { ...pressedKeys, [key]: false };
-    }
-</script>
-
-<Gamepad
-    gamepadIndex={0}
-    on:Connected={onGamepadConnected}
-    on:Disconnected={onGamepadDisconnected}
-    on:A={handleGamepadButton}
-    on:B={handleGamepadButton}
-    on:X={handleGamepadButton}
-    on:Y={handleGamepadButton}
-    on:DpadUp={handleGamepadButton}
-    on:DpadDown={handleGamepadButton}
-    on:DpadLeft={handleGamepadButton}
-    on:DpadRight={handleGamepadButton}
-/>
-
-<div
-    class="flex flex-col md:flex-row h-full p-3 space-y-3 md:space-y-0 md:space-x-3"
->
-    <section
-        class="flex-grow flex items-center justify-center bg-gray-900 rounded-md shadow-inner p-3"
-    >
-        <canvas
-            bind:this={canvasElement}
-            width={DISPLAY_WIDTH * SCALE}
-            height={DISPLAY_HEIGHT * SCALE}
-            class="border border-gray-700 rounded-sm"
-        ></canvas>
-    </section>
-    <aside class="flex-none w-full md:w-72 flex flex-col space-y-3">
-        <ROMBrowser />
-        <div class="bg-gray-900 p-3 rounded-md shadow-inner">
-            <h2 class="text-lg font-semibold mb-2 text-center text-gray-400">
-                Controls
-            </h2>
-            <div class="grid grid-cols-2 gap-2">
-                <div
-                    class="relative inline-block text-left"
-                    use:clickOutside={() => (showResetOptions = false)}
-                >
-                    <button
-                        on:click={toggleResetOptions}
-                        class="flex items-center justify-center space-x-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-3 rounded-md transition-colors duration-200 w-full text-sm"
-                        title="Reset Options"
-                    >
-                        <RotateCcw size={16} />
-                        <span>Reset</span>
-                    </button>
-                    {#if showResetOptions}
-                        <div
-                            class="origin-top-right absolute right-0 mt-1 w-full rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
-                        >
-                            <div class="py-1">
-                                <button
-                                    on:click={handleSoftReset}
-                                    class="block w-full text-left px-3 py-1 text-sm text-gray-200 hover:bg-gray-600"
-                                    >Soft Reset</button
-                                >
-                                <button
-                                    on:click={handleHardReset}
-                                    class="block w-full text-left px-3 py-1 text-sm text-gray-200 hover:bg-gray-600"
-                                    >Hard Reset</button
-                                >
-                            </div>
-                        </div>
-                    {/if}
-                </div>
-                <button
-                    on:click={handleTogglePause}
-                    class="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-md transition-colors duration-200 text-sm"
-                    title={isPaused
-                        ? "Resume emulation (Ctrl+P)"
-                        : "Pause emulation (Ctrl+P)"}
-                >
-                    {#if isPaused}<Play size={16} /><span>Resume</span
-                        >{:else}<Pause size={16} /><span>Pause</span>{/if}
-                </button>
-                <button
-                    on:click={handleScreenshot}
-                    class="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-md transition-colors duration-200 col-span-2 text-sm"
-                    title="Take a screenshot"
-                    ><Camera size={16} /><span>Screenshot</span></button
-                >
-                <button
-                    on:click={handleSaveState}
-                    class="flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-3 rounded-md transition-colors duration-200 text-sm"
-                    title="Save State"
-                    ><Save size={16} /><span>Save State</span></button
-                >
-                <button
-                    on:click={handleLoadState}
-                    class="flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-3 rounded-md transition-colors duration-200 text-sm"
-                    title="Load State (Ctrl+O)"
-                    ><Upload size={16} /><span>Load State</span></button
-                >
-            </div>
-        </div>
-        <div class="bg-gray-900 p-3 rounded-md shadow-inner">
-            <h2 class="text-lg font-semibold mb-2 text-center text-gray-400">
-                CHIP-8 Keypad
-            </h2>
-            <div class="grid grid-cols-4 gap-2 text-center font-mono">
-                {#each keypadLayout as { hex, key, keyboardKey } (hex)}
-                    <button
-                        on:mousedown={() => handleKeypadPress(hex)}
-                        on:mouseup={() => handleKeypadRelease(hex)}
-                        on:mouseleave={() => handleKeypadRelease(hex)}
-                        class="p-2 rounded-md border text-lg font-bold flex flex-col items-center justify-center aspect-square transition-all duration-100 focus:outline-none"
-                        class:bg-blue-500={pressedKeys[hex]}
-                        class:border-blue-400={pressedKeys[hex]}
-                        class:text-white={pressedKeys[hex]}
-                        class:bg-gray-700={!pressedKeys[hex]}
-                        class:border-gray-600={!pressedKeys[hex]}
-                        class:hover:bg-gray-600={!pressedKeys[hex]}
-                        title={`CHIP-8 Key: ${hex.toString(16).toUpperCase()}`}
-                    >
-                        <span class="text-xl">{key}</span>
-                        <span class="text-xs text-gray-400 mt-1"
-                            >{keyboardKey}</span
-                        >
-                    </button>
-                {/each}
-            </div>
-        </div>
-    </aside>
-</div>
-
-```
-
-## File: `frontend/src/lib/Header.svelte`
-
-```svelte
-<script>
-    import {
-        WindowMinimise,
-        WindowMaximise,
-        WindowUnmaximise,
-        WindowIsMaximised,
-        Quit,
-    } from "../wailsjs/runtime/runtime.js";
-    import { Settings, Minimize, Maximize, X, Copy } from "lucide-svelte";
-    import appIcon from "../assets/appicon.svg";
-    import { createEventDispatcher, onMount } from "svelte";
-
-    const dispatch = createEventDispatcher();
-
-    export let currentTab;
-
-    let isMaximized = false;
-
-    onMount(async () => {
-        isMaximized = await WindowIsMaximised();
-    });
-
-    async function toggleMaximize() {
-        if (await WindowIsMaximised()) {
-            WindowUnmaximise();
-        } else {
-            WindowMaximise();
-        }
-        isMaximized = !isMaximized;
-    }
-
-    function openSettings() {
-        dispatch("openSettings");
-    }
-</script>
-
-<header
-    style="--wails-draggable:drag"
-    class="flex-none bg-gray-900 text-gray-200 shadow-md z-20 flex items-center justify-between pr-2"
->
-    <div class="flex items-center">
-        <!-- App Icon and Title -->
-        <div class="p-2 flex items-center space-x-2">
-            <img src={appIcon} alt="App Icon" class="h-5 w-5" />
-            <h1 class="text-md font-semibold text-gray-300">CHIP-8 Emulator</h1>
-        </div>
-        <!-- Tabs -->
-        <nav class="flex space-x-1">
-            <button
-                on:click={() => (currentTab = "emulator")}
-                class="px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200"
-                class:bg-gray-700={currentTab === "emulator"}
-                class:text-white={currentTab === "emulator"}
-                class:text-gray-400={currentTab !== "emulator"}
-                class:hover:bg-gray-700={currentTab !== "emulator"}
-                class:hover:text-white={currentTab !== "emulator"}
-                >Emulator</button
-            >
-            <button
-                on:click={() => (currentTab = "debug")}
-                class="px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200"
-                class:bg-gray-700={currentTab === "debug"}
-                class:text-white={currentTab === "debug"}
-                class:text-gray-400={currentTab !== "debug"}
-                class:hover:bg-gray-700={currentTab !== "debug"}
-                class:hover:text-white={currentTab !== "debug"}
-                >Debug</button
-            >
-        </nav>
-    </div>
-
-    <!-- Window Controls -->
-    <div class="flex items-center space-x-1">
-        <button
-            on:click={openSettings}
-            class="p-2 rounded-md hover:bg-gray-700 transition-colors duration-200"
-            title="Settings"
-        >
-            <Settings size={16} />
-        </button>
-        <button
-            on:click={WindowMinimise}
-            class="p-2 rounded-md hover:bg-gray-700 transition-colors duration-200"
-            title="Minimize"
-        >
-            <Minimize size={16} />
-        </button>
-        <button
-            on:click={toggleMaximize}
-            class="p-2 rounded-md hover:bg-gray-700 transition-colors duration-200"
-            title={isMaximized ? "Restore" : "Maximize"}
-        >
-            {#if isMaximized}
-                <Copy size={16} />
-            {:else}
-                <Maximize size={16} />
-            {/if}
-        </button>
-        <button
-            on:click={Quit}
-            class="p-2 rounded-md hover:bg-red-600 transition-colors duration-200"
-            title="Quit"
-        >
-            <X size={16} />
-        </button>
-    </div>
-</header>
-
-```
-
-## File: `frontend/src/lib/LogViewer.svelte`
-
-```svelte
-<script>
-    import { onMount, onDestroy } from 'svelte';
-    import { GetLogs } from '../wailsjs/go/main/App';
-
-    let logs = [];
-    let intervalId;
-    let logViewerElement;
-
-    async function fetchLogs() {
-        logs = await GetLogs();
-        // Scroll to bottom on new logs
-        if (logViewerElement) {
-            logViewerElement.scrollTop = logViewerElement.scrollHeight;
-        }
-    }
-
-    onMount(() => {
-        fetchLogs();
-        intervalId = setInterval(fetchLogs, 500); // Fetch logs every 500ms
-    });
-
-    onDestroy(() => {
-        clearInterval(intervalId);
-    });
-</script>
-
-<div class="bg-slate-800 p-2 rounded-md border border-slate-700 font-mono text-xs overflow-y-scroll h-64" bind:this={logViewerElement}>
-    {#each logs as log}
-        <div>{log}</div>
-    {/each}
-</div>
-
-<style>
-    /* Add any specific styles for the log viewer here */
-</style>
-
-```
-
-## File: `frontend/src/lib/Notification.svelte`
-
-```svelte
-<script>
-    import { fade } from "svelte/transition";
-    import { notification } from "./stores.js";
-
-    let timeout;
-
-    function dismiss() {
-        clearTimeout(timeout);
-        notification.set({ ...$notification, show: false });
-    }
-
-    let bgColorClass;
-    $: {
-        if ($notification.show && $notification.message) {
-            clearTimeout(timeout);
-            timeout = setTimeout(dismiss, 3000);
-        }
-        switch ($notification.type) {
-            case "success":
-                bgColorClass = "bg-green-500";
-                break;
-            case "warning":
-                bgColorClass = "bg-yellow-500";
-                break;
-            case "error":
-                bgColorClass = "bg-red-500";
-                break;
-            case "info":
-            default:
-                bgColorClass = "bg-blue-500";
-        }
-    }
-</script>
-
-{#if $notification.show && $notification.message}
-    <div
-        in:fade={{ duration: 150 }}
-        out:fade={{ duration: 150 }}
-        class="fixed bottom-4 right-4 p-4 rounded-lg shadow-lg text-white flex items-center space-x-3 z-50 {bgColorClass}"
-        role="alert"
-    >
-        <span>{$notification.message}</span>
-        <button
-            on:click={dismiss}
-            class="ml-auto text-white opacity-75 hover:opacity-100"
-        >
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-            >
-                <path
-                    fill-rule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clip-rule="evenodd"
-                />
-            </svg>
-        </button>
-    </div>
-{/if}
-
-```
-
-## File: `frontend/src/lib/ROMBrowser.svelte`
-
-```svelte
-<script>
-    import { onMount } from 'svelte';
-    import { GetROMs, LoadROM } from '../wailsjs/go/main/App';
-    import { showNotification } from './stores.js';
-    import { Play } from 'lucide-svelte';
-
-    let roms = [];
-    let selectedROM = '';
-
-    async function fetchROMs() {
-        try {
-            const result = await GetROMs();
-            roms = result || [];
-
-            if (roms.length === 0) {
-                showNotification("No ROMs found in ./roms directory.", "warning");
-            }
-        } catch (error) {
-            showNotification(`Failed to load ROM list: ${error}`, "error");
-            console.error("Error fetching ROMs:", error);
-            roms = [];
-        }
-    }
-
-    async function handleLoadSelectedROM() {
-        if (selectedROM) {
-            try {
-                await LoadROM(selectedROM);
-                showNotification(`ROM loaded: ${selectedROM}`, "success");
-            } catch (error) {
-                showNotification(`Failed to load ROM: ${error}`, "error");
-            }
-        } else {
-            showNotification("Please select a ROM first.", "warning");
-        }
-    }
-
-    onMount(fetchROMs);
-</script>
-
-<style>
-    select {
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        appearance: none;
-        background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23CBD5E0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
-        background-repeat: no-repeat;
-        background-position: right 0.7rem center;
-        background-size: 0.65em auto;
-        padding-right: 2.5rem;
-    }
-</style>
-
-<div class="bg-gray-900 p-3 rounded-md shadow-inner">
-    <h3 class="text-lg font-semibold mb-2 text-center text-gray-400">ROM Browser</h3>
-    <div class="mb-2">
-        <select bind:value={selectedROM} class="w-full p-2 rounded-md bg-gray-700 border border-gray-600 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">-- Select a ROM --</option>
-            {#each roms as rom}
-                <option value={rom}>{rom}</option>
-            {/each}
-        </select>
-    </div>
-    <button
-        on:click={handleLoadSelectedROM}
-        class="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-md transition-colors duration-200 text-sm"
-        title="Load Selected ROM"
-    >
-        <Play size={16} />
-        <span>Load ROM</span>
-    </button>
-</div>
-```
-
-## File: `frontend/src/lib/SettingsModal.svelte`
-
-```svelte
-<script>
-    import { settings, updateAndSaveSettings } from "./stores.js";
-
-    export let showModal;
-
-    // --- Tab State ---
-    let activeTab = "appearance"; // 'appearance', 'emulation', 'keybindings'
-
-
-
-    let remappingKey = null; // Stores the CHIP-8 key (a number, 0-15) being remapped
-
-    // --- Derived State for Keybinding View ---
-    let keybindings = [];
-    $: {
-        // --- Local State for Settings ---
-    if (showModal) {
-        localSettings = { ...$settings, keyMap: { ...$settings.keyMap } };
-    }
-        // Create a display-friendly array
-        keybindings = Array.from({ length: 16 }, (_, i) => {
-            const chip8Hex = i;
-            let keyboardKey = "N/A";
-            for (const k in localSettings.keyMap) {
-                if (localSettings.keyMap[k] === chip8Hex) {
-                    keyboardKey = k;
-                    break;
-                }
-            }
-            return { chip8Key: chip8Hex, keyboardKey: keyboardKey };
-        });
-    }
-
-    function closeModal() {
-        showModal = false;
-    }
-
-    async function saveSettings() {
-        await updateAndSaveSettings(localSettings);
-        closeModal();
-    }
-
-    // --- Key Remapping Logic ---
-    function startRemap(event, chip8KeyToRemap) {
-        remappingKey = [REDACTED_generic-api-key];
-        event.target.value = "Press key...";
-        window.addEventListener("keydown", handleRemapKeyDown, { once: true });
-    }
-
-    function handleRemapKeyDown(event) {
-        event.preventDefault();
-        if (remappingKey === null) return;
-
-        const newKeyboardKey = event.key.toLowerCase();
-
-        // Find the keyboard key that is currently mapped to the chip8 key we are remapping
-        let oldKeyboardKey = Object.keys(localSettings.keyMap).find(
-            (k) => localSettings.keyMap[k] === remappingKey,
-        );
-
-        // Find which chip8 key (if any) is currently using the new keyboard key
-        const conflictingChip8Key = localSettings.keyMap[newKeyboardKey];
-
-        // Create a new map to avoid weird reactivity issues
-        const updatedKeyMap = { ...localSettings.keyMap };
-
-        // 1. Remove the old mapping for the key we are changing
-        if (oldKeyboardKey) {
-            delete updatedKeyMap[oldKeyboardKey];
-        }
-
-        // 2. If the new key was already in use by another chip8 key, we need to handle it.
-        //    Let's swap them: the conflicting chip8 key will now be mapped to the old keyboard key.
-        if (conflictingChip8Key !== undefined && oldKeyboardKey) {
-            updatedKeyMap[oldKeyboardKey] = conflictingChip8Key;
-        } else if (conflictingChip8Key !== undefined) {
-            // If there was no old key to swap to, the conflicting mapping is simply removed.
-            delete updatedKeyMap[newKeyboardKey];
-        }
-
-        // 3. Set the new mapping
-        updatedKeyMap[newKeyboardKey] = remappingKey;
-
-        // 4. Update the local state (replace object for reactivity)
-        localSettings = {
-            ...localSettings,
-            keyMap: updatedKeyMap,
-        };
-        remappingKey = null;
-    }
-
-    function endRemap(event, chip8Key) {
-        if (remappingKey !== null) {
-            // Find the original keyboard key to revert to
-            let originalKeyboardKey = "N/A";
-            for (const k in $settings.keyMap) {
-                if ($settings.keyMap[k] === chip8Key) {
-                    originalKeyboardKey = k;
-                    break;
-                }
-            }
-            event.target.value = originalKeyboardKey.toUpperCase();
-            remappingKey = null;
-        }
-    }
-</script>
-
-{#if showModal}
-    <div
-        class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 transition-opacity"
-    >
-        <div
-            class="bg-gray-800 p-5 rounded-lg shadow-2xl border border-gray-700 w-full max-w-2xl"
-        >
-            <h2 class="text-xl font-semibold mb-4 text-center text-gray-200">
-                Settings
-            </h2>
-            <div class="flex space-x-1">
-                <!-- Sidebar -->
-                <div class="w-1/4 bg-gray-900 p-3 rounded-l-md">
-                    <nav class="space-y-1">
-                        <button
-                            on:click={() => (activeTab = "appearance")}
-                            class="w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150"
-                            class:bg-gray-700={activeTab === "appearance"}
-                            class:text-white={activeTab === "appearance"}
-                            class:text-gray-400={activeTab !== "appearance"}
-                            class:hover:bg-gray-700={activeTab !== "appearance"}
-                            class:hover:text-white={activeTab !== "appearance"}
-                            >Appearance</button
-                        >
-                        <button
-                            on:click={() => (activeTab = "emulation")}
-                            class="w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150"
-                            class:bg-gray-700={activeTab === "emulation"}
-                            class:text-white={activeTab === "emulation"}
-                            class:text-gray-400={activeTab !== "emulation"}
-                            class:hover:bg-gray-700={activeTab !== "emulation"}
-                            class:hover:text-white={activeTab !== "emulation"}
-                            >Emulation</button
-                        >
-                        <button
-                            on:click={() => (activeTab = "keybindings")}
-                            class="w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150"
-                            class:bg-gray-700={activeTab === "keybindings"}
-                            class:text-white={activeTab === "keybindings"}
-                            class:text-gray-400={activeTab !== "keybindings"}
-                            class:hover:bg-gray-700={activeTab !==
-                                "keybindings"}
-                            class:hover:text-white={activeTab !== "keybindings"}
-                            >Keybindings</button
-                        >
-                    </nav>
-                </div>
-                <!-- Content -->
-                <div class="w-3/4 bg-gray-800 p-4 rounded-r-md">
-                    <div class="min-h-[300px]">
-                        {#if activeTab === "appearance"}
-                            <div class="space-y-5">
-                                <h3 class="text-lg font-semibold text-gray-300">
-                                    Display
-                                </h3>
-                                <div>
-                                    <label
-                                        class="block text-gray-400 text-sm font-medium mb-2"
-                                        >Pixel Color</label
-                                    >
-                                    <div class="flex flex-wrap gap-4">
-                                        <label class="inline-flex items-center"
-                                            ><input
-                                                type="radio"
-                                                class="form-radio bg-gray-700 border-gray-600 text-green-500 focus:ring-green-500"
-                                                name="displayColor"
-                                                value="#33FF00"
-                                                bind:group={
-                                                    localSettings.displayColor
-                                                }
-                                            /><span class="ml-2"
-                                                >Classic Green</span
-                                            ></label
-                                        >
-                                        <label class="inline-flex items-center"
-                                            ><input
-                                                type="radio"
-                                                class="form-radio bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
-                                                name="displayColor"
-                                                value="#FFFFFF"
-                                                bind:group={
-                                                    localSettings.displayColor
-                                                }
-                                            /><span class="ml-2">White</span
-                                            ></label
-                                        >
-                                        <label class="inline-flex items-center"
-                                            ><input
-                                                type="radio"
-                                                class="form-radio bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500"
-                                                name="displayColor"
-                                                value="#FFBF00"
-                                                bind:group={
-                                                    localSettings.displayColor
-                                                }
-                                            /><span class="ml-2">Amber</span
-                                            ></label
-                                        >
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="inline-flex items-center"
-                                        ><input
-                                            type="checkbox"
-                                            class="form-checkbox bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
-                                            bind:checked={
-                                                localSettings.scanlineEffect
-                                            }
-                                        /><span class="ml-2 text-gray-300"
-                                            >Enable Scanline Effect</span
-                                        ></label
-                                    >
-                                </div>
-                            </div>
-                        {/if}
-                        {#if activeTab === "emulation"}
-                            <div class="space-y-6">
-                                <h3 class="text-lg font-semibold text-gray-300">
-                                    Performance
-                                </h3>
-                                <div>
-                                    <label
-                                        for="clockSpeed"
-                                        class="block text-gray-400 text-sm font-medium mb-2"
-                                        >CPU Clock Speed: {localSettings.clockSpeed}
-                                        Hz</label
-                                    >
-                                    <input
-                                        type="range"
-                                        id="clockSpeed"
-                                        min="100"
-                                        max="2000"
-                                        step="50"
-                                        bind:value={localSettings.clockSpeed}
-                                        class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                                    />
-                                </div>
-                                <div>
-                                    <label
-                                        class="block text-gray-400 text-sm font-medium mb-2"
-                                        >Speed Presets</label
-                                    >
-                                    <div class="flex flex-wrap gap-4">
-                                        <label class="inline-flex items-center"
-                                            ><input
-                                                type="radio"
-                                                class="form-radio bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
-                                                value={700}
-                                                bind:group={
-                                                    localSettings.clockSpeed
-                                                }
-                                            /><span class="ml-2"
-                                                >Original (700Hz)</span
-                                            ></label
-                                        >
-                                        <label class="inline-flex items-center"
-                                            ><input
-                                                type="radio"
-                                                class="form-radio bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
-                                                value={1400}
-                                                bind:group={
-                                                    localSettings.clockSpeed
-                                                }
-                                            /><span class="ml-2"
-                                                >Fast (1400Hz)</span
-                                            ></label
-                                        >
-                                        <label class="inline-flex items-center"
-                                            ><input
-                                                type="radio"
-                                                class="form-radio bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
-                                                value={2000}
-                                                bind:group={
-                                                    localSettings.clockSpeed
-                                                }
-                                            /><span class="ml-2"
-                                                >Turbo (2000Hz)</span
-                                            ></label
-                                        >
-                                    </div>
-                                </div>
-                            </div>
-                        {/if}
-                        {#if activeTab === "keybindings"}
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-300">
-                                    Key Remapping
-                                </h3>
-                                <p class="text-sm text-gray-400 mb-3">
-                                    Click a key, then press the desired keyboard
-                                    key to rebind.
-                                </p>
-                                <div
-                                    class="grid grid-cols-4 gap-3 text-center font-mono"
-                                >
-                                    {#each keybindings as binding (binding.chip8Key)}
-                                        <div
-                                            class="bg-gray-700 p-2 rounded-md border border-gray-600"
-                                        >
-                                            <span
-                                                class="font-bold text-gray-300"
-                                                >{binding.chip8Key
-                                                    .toString(16)
-                                                    .toUpperCase()}</span
-                                            >
-                                            <input
-                                                type="text"
-                                                value={(
-                                                    binding.keyboardKey || ""
-                                                ).toUpperCase()}
-                                                on:focus={(e) =>
-                                                    startRemap(
-                                                        e,
-                                                        binding.chip8Key,
-                                                    )}
-                                                on:blur={(e) =>
-                                                    endRemap(
-                                                        e,
-                                                        binding.chip8Key,
-                                                    )}
-                                                class="w-full bg-gray-600 text-white text-center rounded-sm mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500 p-1 cursor-pointer"
-                                                readonly
-                                            />
-                                        </div>
-                                    {/each}
-                                </div>
-                            </div>
-                        {/if}
-                    </div>
-                </div>
-            </div>
-            <!-- Action Buttons -->
-            <div
-                class="flex justify-end gap-3 mt-4 border-t border-gray-700 pt-4"
-            >
-                <button
-                    on:click={closeModal}
-                    class="bg-gray-600 hover:bg-gray-500 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm"
-                    >Cancel</button
-                >
-                <button
-                    on:click={saveSettings}
-                    class="bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm"
-                    >Save & Close</button
-                >
-            </div>
-        </div>
-    </div>
-{/if}
-
-```
-
-## File: `frontend/src/lib/clickOutside.js`
-
-```javascript
-/**
- * Svelte action: dispatches a 'click_outside' event when a click occurs outside the given node.
- * @param {HTMLElement} node - The element to detect outside clicks for.
- * @returns {{ destroy(): void }}
- */
-export function clickOutside(node) {
-  const handleClick = (event) => {
-    if (node && !node.contains(event.target) && !event.defaultPrevented) {
-      node.dispatchEvent(new CustomEvent("click_outside", node));
-    }
-  };
-
-  document.addEventListener("click", handleClick, true);
-
-  return {
-    destroy() {
-      document.removeEventListener("click", handleClick, true);
-    },
-  };
-}
-
-```
-
-## File: `frontend/src/lib/stores.js`
-
-```javascript
-import { writable } from "svelte/store";
-import { SaveSettings } from "../wailsjs/go/main/App.js";
-
-/**
- * Svelte store for notification state.
- * @type {import("svelte/store").Writable<{message: string, type: string, show: boolean}>}
- */
-export const notification = writable({
-  message: "",
-  type: "info",
-  show: false,
-});
-
-/**
- * Show a notification with a message, type, and duration.
- * @param {string} message
- * @param {string} [type="info"]
- * @param {number} [duration=3000]
- */
-export function showNotification(message, type = "info", duration = 3000) {
-  notification.set({ message, type, show: true });
-  setTimeout(() => {
-    notification.update((n) => ({ ...n, show: false }));
-  }, duration);
-}
-
-/**
- * Default emulator settings.
- * @type {{
- *   clockSpeed: number,
- *   displayColor: string,
- *   scanlineEffect: boolean,
- *   keyMap: Record<string|number, number>
- * }}
- */
-const defaultSettings = {
-  clockSpeed: 700,
-  displayColor: "#33FF00",
-  scanlineEffect: false,
-  keyMap: {
-    1: 0x1,
-    2: 0x2,
-    3: 0x3,
-    4: 0xc,
-    q: 0x4,
-    w: 0x5,
-    e: 0x6,
-    r: 0xd,
-    a: 0x7,
-    s: 0x8,
-    d: 0x9,
-    f: 0xe,
-    z: 0xa,
-    x: 0x0,
-    c: 0xb,
-    v: 0xf,
-  },
-};
-
-/**
- * Svelte store for emulator settings.
- * @type {import("svelte/store").Writable<typeof defaultSettings>}
- */
-export const settings = writable(defaultSettings);
-
-/**
- * Save settings to both the store and the Go backend.
- * @param {typeof defaultSettings} newSettings
- * @returns {Promise<void>}
- */
-export async function updateAndSaveSettings(newSettings) {
-  try {
-    await SaveSettings(newSettings);
-    settings.set(newSettings);
-    showNotification("Settings saved successfully!", "success");
-  } catch (error) {
-    showNotification(`Failed to save settings: ${error}`, "error");
-    console.error("Settings save error:", error);
-  }
-}
-
-```
-
-## File: `frontend/src/App.svelte`
-
-```svelte
-<script>
-    import { onMount } from "svelte";
-    import { EventsOn } from "./wailsjs/runtime/runtime.js";
-    import { FrontendReady, GetInitialState } from "./wailsjs/go/main/App.js";
-    import { settings } from "./lib/stores.js";
-    import SettingsModal from "./lib/SettingsModal.svelte";
-    import DebugPanel from "./lib/DebugPanel.svelte";
-    import Notification from "./lib/Notification.svelte";
-    import Header from "./lib/Header.svelte";
-    import EmulatorView from "./lib/EmulatorView.svelte";
-
-    /**
-     * @typedef {Object} DebugState
-     * @property {number[]} Registers
-     * @property {any[]} Disassembly
-     * @property {number[]} Stack
-     * @property {Object} Breakpoints
-     * @property {number} PC
-     * @property {number} I
-     * @property {number} SP
-     * @property {number} DelayTimer
-     * @property {number} SoundTimer
-     */
-
-    /** @type {DebugState} */
-    let debugState = {
-        Registers: Array(16).fill(0),
-        Disassembly: [],
-        Stack: Array(16).fill(0),
-        Breakpoints: {},
-        PC: 0,
-        I: 0,
-        SP: 0,
-        DelayTimer: 0,
-        SoundTimer: 0,
-    };
-    let statusMessage = "Status: Idle | ROM: None";
-    let showSettingsModal = false;
-    let currentTab = "emulator";
-
-    onMount(async () => {
-        EventsOn("debugUpdate", (newState) => {
-            debugState = newState;
-        });
-
-        EventsOn("statusUpdate", (newStatus) => {
-            statusMessage = newStatus;
-        });
-
-        await FrontendReady();
-
-        const initialState = await GetInitialState();
-        if (initialState.cpuState) {
-            debugState = initialState.cpuState;
-        }
-        if (initialState.settings) {
-            settings.set(initialState.settings);
-        }
-    });
-
-    /** Open the settings modal. */
-    function openSettings() {
-        showSettingsModal = true;
-    }
-
-</script>
-<div
-    class="flex flex-col h-screen bg-gray-800 text-gray-200 font-sans antialiased"
->
-    <Header bind:currentTab on:openSettings={openSettings} />
-
-    <!-- Main Content Area -->
-    <main class="flex-grow overflow-hidden">
-        {#if currentTab === "emulator"}
-            <EmulatorView />
-        {:else if currentTab === "debug"}
-            <DebugPanel bind:debugState />
-        {/if}
-    </main>
-    <footer
-        class="flex-none bg-gray-900 text-gray-400 text-xs text-center py-2 shadow-inner border-t border-gray-800"
-    >
-        {statusMessage}
-    </footer>
-    <Notification />
-</div>
-{#if showSettingsModal}
-    <SettingsModal bind:showModal={showSettingsModal} />
-{/if}
-
-```
-
 ## File: `app.go`
 
 ```go
@@ -2197,6 +713,19 @@ func DefaultKeyMap() map[string]int {
 	}
 }
 
+// Struct to parse wails.json (This should be in one place, main.go is fine)
+type WailsInfo struct {
+	Info struct {
+		ProductName string `json:"productName"`
+		Version     string `json:"version"`
+		Description string `json:"description"`
+		ProjectURL  string `json:"projectURL"`
+	} `json:"info"`
+	Author struct {
+		Name string `json:"name"`
+	} `json:"author"`
+}
+
 // App struct
 type App struct {
 	ctx           context.Context
@@ -2210,6 +739,8 @@ type App struct {
 	romLoaded     []byte // Store the loaded ROM data for soft reset
 	settings      Settings
 	settingsPath  string
+	isDebugging   bool // To track if the debug panel is active
+	wailsInfo     WailsInfo
 }
 
 // NewApp creates a new App application struct
@@ -2257,8 +788,12 @@ func (a *App) startup(ctx context.Context) {
 
 // --- Frontend Ready Signal ---
 
+var frontendReadyOnce sync.Once
+
 func (a *App) FrontendReady() {
-	close(a.frontendReady)
+	frontendReadyOnce.Do(func() {
+		close(a.frontendReady)
+	})
 }
 
 // --- Main Emulator Loop ---
@@ -2296,25 +831,21 @@ func (a *App) runEmulator() {
 			a.pauseMutex.Unlock()
 
 			if isRunning {
-				// Handle timers at a consistent 60Hz
-				if a.cpu.DelayTimer > 0 {
-					a.cpu.DelayTimer--
-				}
-				if a.cpu.SoundTimer > 0 {
-					// Beep only when timer is active
-					a.PlayBeep()
-					a.cpu.SoundTimer--
-				}
+				a.cpu.UpdateTimers()
 			}
 
-			// Push updates to the UI at a consistent 60Hz
+			// --- OPTIMIZATION ---
+			// Only push updates if the debug panel is active
+			if a.isDebugging {
+				runtime.EventsEmit(a.ctx, "debugUpdate", a.cpu.GetState())
+			}
+
+			// The display update is separate and should always happen if the draw flag is set
 			if a.cpu.DrawFlag {
-				// Frontend expects a base64 string for display updates.
 				displayData := base64.StdEncoding.EncodeToString(a.cpu.Display[:])
 				runtime.EventsEmit(a.ctx, "displayUpdate", displayData)
 				a.cpu.ClearDrawFlag()
 			}
-			runtime.EventsEmit(a.ctx, "debugUpdate", a.cpu.GetState())
 		}
 	}
 }
@@ -2347,6 +878,7 @@ func (a *App) loadSettings() {
 	// If file exists, unmarshal it
 	if err := json.Unmarshal(data, &a.settings); err != nil {
 		a.appendLog(fmt.Sprintf("Error reading settings.json: %v. Using defaults.", err))
+		log.Printf("ERROR: Failed to unmarshal settings.json: %v", err) // Added log
 		// Handle case of corrupted JSON
 		a.settings = Settings{
 			ClockSpeed:     700,
@@ -2356,6 +888,7 @@ func (a *App) loadSettings() {
 		}
 	} else {
 		a.appendLog("Settings loaded successfully.")
+		log.Printf("DEBUG: Settings loaded: %+v", a.settings) // Added log
 	}
 
 	// Apply the loaded clock speed
@@ -2365,7 +898,8 @@ func (a *App) loadSettings() {
 // SaveSettings is a new bindable method to save settings from the frontend.
 func (a *App) SaveSettings(settings Settings) error {
 	a.appendLog("Saving settings...")
-	a.settings = settings // Update the app's internal state
+	log.Printf("DEBUG: Saving settings: %+v", settings) // Added log
+	a.settings = settings                               // Update the app's internal state
 
 	// Apply the new clock speed immediately
 	a.SetClockSpeed(settings.ClockSpeed)
@@ -2373,22 +907,26 @@ func (a *App) SaveSettings(settings Settings) error {
 	data, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
 		a.appendLog(fmt.Sprintf("Failed to marshal settings: %v", err))
+		log.Printf("ERROR: Failed to marshal settings: %v", err) // Added log
 		return err
 	}
 
 	err = ioutil.WriteFile(a.settingsPath, data, 0644)
 	if err != nil {
 		a.appendLog(fmt.Sprintf("Failed to write settings file: %v", err))
+		log.Printf("ERROR: Failed to write settings file: %v", err) // Added log
 		return err
 	}
 
 	a.appendLog("Settings saved successfully.")
+	log.Printf("DEBUG: Settings saved to %s", a.settingsPath) // Added log
 	return nil
 }
 
 // GetInitialState now needs to include settings
 func (a *App) GetInitialState() map[string]interface{} {
 	a.appendLog("Frontend connected, providing initial state and settings.")
+	log.Printf("DEBUG: Sending initial state: cpuState=%+v, settings=%+v", a.cpu.GetState(), a.settings) // Added log
 	return map[string]interface{}{
 		"cpuState": a.cpu.GetState(),
 		"settings": a.settings,
@@ -2567,7 +1105,51 @@ func (a *App) ClearBreakpoint(address uint16) {
 	}
 }
 
-// PlayBeep sends a signal to the frontend to play a beep sound.
+// --- NEW BINDABLE METHODS ---
+
+// StartDebugUpdates is called by the frontend when the debug tab is shown.
+func (a *App) StartDebugUpdates() {
+	a.appendLog("Debug view activated. Starting debug updates.")
+	a.isDebugging = true
+}
+
+// StopDebugUpdates is called by the frontend when the debug tab is hidden.
+func (a *App) StopDebugUpdates() {
+	a.appendLog("Debug view deactivated. Stopping debug updates.")
+	a.isDebugging = false
+}
+
+// ShowAboutDialog constructs and displays a detailed about dialog.
+func (a *App) ShowAboutDialog() {
+	if a.ctx == nil {
+		return
+	}
+	message := fmt.Sprintf(`%s
+Version: %s
+
+%s
+
+Developed by: %s`,
+		a.wailsInfo.Info.ProductName,
+		a.wailsInfo.Info.Version,
+		a.wailsInfo.Info.Description,
+		a.wailsInfo.Author.Name,
+	)
+	runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+		Type:    runtime.InfoDialog,
+		Title:   fmt.Sprintf("About %s", a.wailsInfo.Info.ProductName),
+		Message: message,
+	})
+}
+
+// OpenGitHubLink opens the project's GitHub repository in the default browser.
+func (a *App) OpenGitHubLink() {
+	if a.ctx == nil || a.wailsInfo.Info.ProjectURL == "" {
+		return
+	}
+	runtime.BrowserOpenURL(a.ctx, a.wailsInfo.Info.ProjectURL)
+}
+
 func (a *App) PlayBeep() {
 	if a.ctx != nil {
 		runtime.EventsEmit(a.ctx, "playBeep")
@@ -2748,14 +1330,16 @@ package main
 
 import (
 	"embed"
+	"encoding/json" // Import the JSON package
+	"log"           // Import log
 
 	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
@@ -2764,17 +1348,28 @@ var assets embed.FS
 //go:embed build/appicon.png
 var icon []byte
 
+// --- NEW: Embed wails.json to access app info ---
+//
+//go:embed wails.json
+var wailsJSON []byte
+
 func main() {
-	// Create an instance of the app structure.
-	// NewApp() now correctly initializes the CPU core.
 	app := NewApp()
 
+	var wailsInfo WailsInfo // Using the struct defined in app.go
+
+	err := json.Unmarshal(wailsJSON, &wailsInfo)
+	if err != nil {
+		log.Fatalf("Failed to parse wails.json: %v", err)
+	}
+	app.wailsInfo = wailsInfo // Assign the parsed info
+
 	// Create application with options
-	err := wails.Run(&options.App{
-		Title:            "chip8-wails",
-		Width:            1280,
-		Height:           800,
-		Frameless:        true, // Frameless window
+	err = wails.Run(&options.App{
+		Title:     wailsInfo.Info.ProductName, // Use ProductName for the title
+		Width:     1280,
+		Height:    800,
+		Frameless: true, // Frameless window
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
@@ -2788,32 +1383,39 @@ func main() {
 		},
 		Menu: menu.NewMenuFromItems(
 			menu.SubMenu("File", menu.NewMenuFromItems(
-								menu.Text("Load ROM", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
-					go app.LoadROMFromFile() // Run in a goroutine to not block the UI
+				menu.Text("Load ROM...", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
+					go app.LoadROMFromFile()
+				}),
+				// --- NEW MENU ITEM ---
+				menu.Text("Save State", keys.CmdOrCtrl("s"), func(_ *menu.CallbackData) {
+					runtime.EventsEmit(app.ctx, "menu:savestate")
 				}),
 				menu.Separator(),
 				menu.Text("Quit", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
-					if app.ctx != nil {
-						runtime.Quit(app.ctx)
-					}
+					runtime.Quit(app.ctx)
 				}),
 			)),
 			menu.SubMenu("Emulation", menu.NewMenuFromItems(
 				menu.Text("Pause/Resume", keys.CmdOrCtrl("p"), func(_ *menu.CallbackData) {
-					if app.ctx != nil {
-						runtime.EventsEmit(app.ctx, "menu:pause")
-					}
+					runtime.EventsEmit(app.ctx, "menu:pause")
+				}),
+				// --- NEW MENU ITEMS ---
+				menu.Text("Soft Reset", keys.CmdOrCtrl("r"), func(_ *menu.CallbackData) {
+					runtime.EventsEmit(app.ctx, "menu:softreset")
+				}),
+				menu.Text("Hard Reset", keys.CmdOrCtrl("r"), func(_ *menu.CallbackData) {
+					runtime.EventsEmit(app.ctx, "menu:hardreset")
 				}),
 			)),
 			menu.SubMenu("Help", menu.NewMenuFromItems(
+				// --- NEW MENU ITEM ---
+				menu.Text("Visit GitHub", nil, func(_ *menu.CallbackData) {
+					app.OpenGitHubLink()
+				}),
+				menu.Separator(),
+
 				menu.Text("About", nil, func(_ *menu.CallbackData) {
-					if app.ctx != nil {
-						runtime.MessageDialog(app.ctx, runtime.MessageDialogOptions{
-							Type:    runtime.InfoDialog,
-							Title:   "About CHIP-8 Emulator",
-							Message: "A CHIP-8 emulator built with Wails and Svelte.",
-						})
-					}
+					app.ShowAboutDialog()
 				}),
 			)),
 		),

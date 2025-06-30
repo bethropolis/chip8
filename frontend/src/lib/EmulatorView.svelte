@@ -132,6 +132,12 @@
     onMount(async () => {
         EventsOn("wails:file-drop", handleFileDrop);
         EventsOn("menu:pause", handleTogglePause);
+    // --- NEW EVENT LISTENERS ---
+    EventsOn("menu:savestate", handleSaveState);
+    EventsOn("menu:softreset", handleSoftReset);
+    EventsOn("menu:hardreset", handleHardReset);
+    EventsOn("menu:loadstate", handleLoadState);
+    EventsOn("menu:loadstate", handleLoadState);
 
         EventsOn("displayUpdate", (base64DisplayBuffer) => {
             if (animationFrameId) cancelAnimationFrame(animationFrameId);

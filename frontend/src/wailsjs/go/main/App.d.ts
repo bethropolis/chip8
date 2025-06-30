@@ -30,6 +30,8 @@ export function LoadState(arg1:Array<number>):Promise<void>;
 
 export function LoadStateFromFile():Promise<void>;
 
+export function OpenGitHubLink():Promise<void>;
+
 export function PlayBeep():Promise<void>;
 
 export function Reset():Promise<void>;
@@ -46,6 +48,12 @@ export function SetBreakpoint(arg1:number):Promise<void>;
 
 export function SetClockSpeed(arg1:number):Promise<void>;
 
+export function ShowAboutDialog():Promise<void>;
+
 export function SoftReset():Promise<void>;
+
+export function StartDebugUpdates():Promise<void>;
+
+export function StopDebugUpdates():Promise<void>;
 
 export function TogglePause():Promise<boolean>;

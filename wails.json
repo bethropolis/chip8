@@ -10,5 +10,13 @@
   "author": {
     "name": "bethropolis",
     "email": "66518866+bethropolis@users.noreply.github.com"
+  },
+  "info": {
+    "productName": "CHIP-8 Emulator",
+    "version": "1.0.0",
+    "description": "A feature-rich CHIP-8 emulator built with Go and Svelte.",
+    "companyName": "Bethropolis",
+    "copyright": "Copyright © 2025 bethropolis",
+    "projectURL": "https://github.com/bethropolis/chip8"
   }
 }

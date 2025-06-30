@@ -1,8 +1,13 @@
 <script>
     import { onMount } from "svelte";
     import { EventsOn } from "./wailsjs/runtime/runtime.js";
-    import { FrontendReady, GetInitialState } from "./wailsjs/go/main/App.js";
-    import { settings } from "./lib/stores.js";
+    import {
+        FrontendReady,
+        GetInitialState,
+        StartDebugUpdates, // Import new functions
+        StopDebugUpdates,
+    } from "./wailsjs/go/main/App.js";
+    import { settings, initializeSettings } from "./lib/stores.js";
     import SettingsModal from "./lib/SettingsModal.svelte";
     import DebugPanel from "./lib/DebugPanel.svelte";
     import Notification from "./lib/Notification.svelte";
@@ -38,7 +43,19 @@
     let showSettingsModal = false;
     let currentTab = "emulator";
 
+    // --- OPTIMIZATION: Reactive statement to control debug updates ---
+    $: {
+        if (currentTab === "debug") {
+            StartDebugUpdates();
+        } else {
+            StopDebugUpdates();
+        }
+    }
+
     onMount(async () => {
+        // We can stop debug updates on initial mount, just in case.
+        StopDebugUpdates();
+
         EventsOn("debugUpdate", (newState) => {
             debugState = newState;
         });
@@ -50,11 +67,14 @@
         await FrontendReady();
 
         const initialState = await GetInitialState();
+        console.log("Initial state from backend:", initialState);
         if (initialState.cpuState) {
             debugState = initialState.cpuState;
         }
         if (initialState.settings) {
-            settings.set(initialState.settings);
+            initializeSettings(initialState.settings);
+        } else {
+            initializeSettings(null); // In case settings are not returned for some reason
         }
     });
 

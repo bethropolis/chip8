@@ -37,32 +37,34 @@ func DefaultKeyMap() map[string]int {
 	}
 }
 
+// Struct to parse wails.json (This should be in one place, main.go is fine)
+type WailsInfo struct {
+	Info struct {
+		ProductName string `json:"productName"`
+		Version     string `json:"version"`
+		Description string `json:"description"`
+		ProjectURL  string `json:"projectURL"`
+	} `json:"info"`
+	Author struct {
+		Name string `json:"name"`
+	} `json:"author"`
+}
+
 // App struct
 type App struct {
-	ctx context.Context
-
-	cpu *chip8.Chip8
-
-	isPaused   bool
-	pauseMutex sync.Mutex
-
-	// Used to signal the emulator loop to stop
-	quitChan chan struct{}
-
-	// Used to signal that the emulator loop has stopped
-	doneChan chan struct{}
-
-	// Used to signal that a ROM has been loaded
-	romLoadedChan chan struct{}
-
-	// Used to signal that the emulator has started running
-	emulatorStartedChan chan struct{}
-
-	// Log buffer for the frontend
-	logBuffer []string
-	logMutex  sync.Mutex
-
-	isDebugging bool // To track if the debug panel is active
+	ctx           context.Context
+	cpu           *chip8.Chip8
+	frontendReady chan struct{}
+	cpuSpeed      time.Duration // Use time.Duration for clarity
+	logBuffer     []string
+	logMutex      sync.Mutex
+	isPaused      bool
+	pauseMutex    sync.Mutex
+	romLoaded     []byte // Store the loaded ROM data for soft reset
+	settings      Settings
+	settingsPath  string
+	isDebugging   bool // To track if the debug panel is active
+	wailsInfo     WailsInfo
 }
 
 // NewApp creates a new App application struct
@@ -110,8 +112,12 @@ func (a *App) startup(ctx context.Context) {
 
 // --- Frontend Ready Signal ---
 
+var frontendReadyOnce sync.Once
+
 func (a *App) FrontendReady() {
-	close(a.frontendReady)
+	frontendReadyOnce.Do(func() {
+		close(a.frontendReady)
+	})
 }
 
 // --- Main Emulator Loop ---
@@ -196,6 +202,7 @@ func (a *App) loadSettings() {
 	// If file exists, unmarshal it
 	if err := json.Unmarshal(data, &a.settings); err != nil {
 		a.appendLog(fmt.Sprintf("Error reading settings.json: %v. Using defaults.", err))
+		log.Printf("ERROR: Failed to unmarshal settings.json: %v", err) // Added log
 		// Handle case of corrupted JSON
 		a.settings = Settings{
 			ClockSpeed:     700,
@@ -205,6 +212,7 @@ func (a *App) loadSettings() {
 		}
 	} else {
 		a.appendLog("Settings loaded successfully.")
+		log.Printf("DEBUG: Settings loaded: %+v", a.settings) // Added log
 	}
 
 	// Apply the loaded clock speed
@@ -214,7 +222,8 @@ func (a *App) loadSettings() {
 // SaveSettings is a new bindable method to save settings from the frontend.
 func (a *App) SaveSettings(settings Settings) error {
 	a.appendLog("Saving settings...")
-	a.settings = settings // Update the app's internal state
+	log.Printf("DEBUG: Saving settings: %+v", settings) // Added log
+	a.settings = settings                               // Update the app's internal state
 
 	// Apply the new clock speed immediately
 	a.SetClockSpeed(settings.ClockSpeed)
@@ -222,22 +231,26 @@ func (a *App) SaveSettings(settings Settings) error {
 	data, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
 		a.appendLog(fmt.Sprintf("Failed to marshal settings: %v", err))
+		log.Printf("ERROR: Failed to marshal settings: %v", err) // Added log
 		return err
 	}
 
 	err = ioutil.WriteFile(a.settingsPath, data, 0644)
 	if err != nil {
 		a.appendLog(fmt.Sprintf("Failed to write settings file: %v", err))
+		log.Printf("ERROR: Failed to write settings file: %v", err) // Added log
 		return err
 	}
 
 	a.appendLog("Settings saved successfully.")
+	log.Printf("DEBUG: Settings saved to %s", a.settingsPath) // Added log
 	return nil
 }
 
 // GetInitialState now needs to include settings
 func (a *App) GetInitialState() map[string]interface{} {
 	a.appendLog("Frontend connected, providing initial state and settings.")
+	log.Printf("DEBUG: Sending initial state: cpuState=%+v, settings=%+v", a.cpu.GetState(), a.settings) // Added log
 	return map[string]interface{}{
 		"cpuState": a.cpu.GetState(),
 		"settings": a.settings,
@@ -416,7 +429,51 @@ func (a *App) ClearBreakpoint(address uint16) {
 	}
 }
 
-// PlayBeep sends a signal to the frontend to play a beep sound.
+// --- NEW BINDABLE METHODS ---
+
+// StartDebugUpdates is called by the frontend when the debug tab is shown.
+func (a *App) StartDebugUpdates() {
+	a.appendLog("Debug view activated. Starting debug updates.")
+	a.isDebugging = true
+}
+
+// StopDebugUpdates is called by the frontend when the debug tab is hidden.
+func (a *App) StopDebugUpdates() {
+	a.appendLog("Debug view deactivated. Stopping debug updates.")
+	a.isDebugging = false
+}
+
+// ShowAboutDialog constructs and displays a detailed about dialog.
+func (a *App) ShowAboutDialog() {
+	if a.ctx == nil {
+		return
+	}
+	message := fmt.Sprintf(`%s
+Version: %s
+
+%s
+
+Developed by: %s`,
+		a.wailsInfo.Info.ProductName,
+		a.wailsInfo.Info.Version,
+		a.wailsInfo.Info.Description,
+		a.wailsInfo.Author.Name,
+	)
+	runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+		Type:    runtime.InfoDialog,
+		Title:   fmt.Sprintf("About %s", a.wailsInfo.Info.ProductName),
+		Message: message,
+	})
+}
+
+// OpenGitHubLink opens the project's GitHub repository in the default browser.
+func (a *App) OpenGitHubLink() {
+	if a.ctx == nil || a.wailsInfo.Info.ProjectURL == "" {
+		return
+	}
+	runtime.BrowserOpenURL(a.ctx, a.wailsInfo.Info.ProjectURL)
+}
+
 func (a *App) PlayBeep() {
 	if a.ctx != nil {
 		runtime.EventsEmit(a.ctx, "playBeep")

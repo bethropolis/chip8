@@ -1,5 +1,6 @@
 <script>
     import { settings, updateAndSaveSettings } from "./stores.js";
+    import { writable } from "svelte/store";
 
     export let showModal;
 
@@ -7,13 +8,13 @@
     let activeTab = "appearance";
 
     // --- FIX: Declare localSettings in the component's scope ---
-    let localSettings = {};
+    let localSettings = writable({});
 
     $: {
         if (showModal) {
             // Create a deep copy of the settings from the store
             // This prevents changes from affecting the global state until "Save" is clicked.
-            localSettings = JSON.parse(JSON.stringify($settings));
+            localSettings.set(JSON.parse(JSON.stringify($settings)));
         }
     }
 
@@ -22,17 +23,12 @@
     // --- Derived State for Keybinding View ---
     let keybindings = [];
     $: {
-        if (localSettings.keyMap) {
-            // Create a display-friendly array from the localSettings
+        if ($localSettings.keyMap) {
             keybindings = Array.from({ length: 16 }, (_, i) => {
                 const chip8Hex = i;
-                let keyboardKey = "N/A";
-                for (const k in localSettings.keyMap) {
-                    if (localSettings.keyMap[k] === chip8Hex) {
-                        keyboardKey = k;
-                        break;
-                    }
-                }
+                const keyboardKey = Object.keys($localSettings.keyMap).find(
+                    k => $localSettings.keyMap[k] === chip8Hex
+                ) || "N/A";
                 return { chip8Key: chip8Hex, keyboardKey: keyboardKey };
             });
         }
@@ -43,13 +39,13 @@
     }
 
     async function saveSettings() {
-        await updateAndSaveSettings(localSettings);
+        await updateAndSaveSettings($localSettings);
         closeModal();
     }
 
     // --- Key Remapping Logic ---
     function startRemap(event, chip8KeyToRemap) {
-        // FIX: Assign the chip8 key correctly
+        // --- FIX: Correctly assign the key to remap ---
         remappingKey = chip8KeyToRemap;
         event.target.value = "Press key...";
         window.addEventListener("keydown", handleRemapKeyDown, { once: true });
@@ -60,31 +56,33 @@
         if (remappingKey === null) return;
 
         const newKeyboardKey = event.key.toLowerCase();
-        const updatedKeyMap = { ...localSettings.keyMap };
-        let oldKeyboardKey = Object.keys(updatedKeyMap).find(
-            (k) => updatedKeyMap[k] === remappingKey,
-        );
-        const conflictingChip8Key = updatedKeyMap[newKeyboardKey];
+        localSettings.update(currentSettings => {
+            const updatedKeyMap = { ...currentSettings.keyMap };
+            let oldKeyboardKey = Object.keys(updatedKeyMap).find(
+                (k) => updatedKeyMap[k] === remappingKey,
+            );
+            const conflictingChip8Key = updatedKeyMap[newKeyboardKey];
 
-        if (oldKeyboardKey) {
-            delete updatedKeyMap[oldKeyboardKey];
-        }
+            if (oldKeyboardKey) {
+                delete updatedKeyMap[oldKeyboardKey];
+            }
 
-        if (conflictingChip8Key !== undefined && oldKeyboardKey) {
-            updatedKeyMap[oldKeyboardKey] = conflictingChip8Key;
-        } else if (conflictingChip8Key !== undefined) {
-            delete updatedKeyMap[newKeyboardKey];
-        }
+            if (conflictingChip8Key !== undefined && oldKeyboardKey) {
+                updatedKeyMap[oldKeyboardKey] = conflictingChip8Key;
+            } else if (conflictingChip8Key !== undefined) {
+                delete updatedKeyMap[newKeyboardKey];
+            }
 
-        updatedKeyMap[newKeyboardKey] = remappingKey;
-
-        localSettings = { ...localSettings, keyMap: updatedKeyMap };
+            updatedKeyMap[newKeyboardKey] = remappingKey;
+            currentSettings.keyMap = updatedKeyMap;
+            return currentSettings;
+        });
         remappingKey = null;
     }
 
     function endRemap(event, chip8Key) {
         if (remappingKey !== null) {
-            const originalKey = Object.keys($settings.keyMap).find(k => $settings.keyMap[k] === chip8Key) || 'N/A';
+            const originalKey = Object.keys($localSettings.keyMap).find(k => $localSettings.keyMap[k] === chip8Key) || 'N/A';
             event.target.value = originalKey.toUpperCase();
             remappingKey = null;
         }
@@ -162,7 +160,7 @@
                                                 name="displayColor"
                                                 value="#33FF00"
                                                 bind:group={
-                                                    localSettings.displayColor
+                                                    $localSettings.displayColor
                                                 }
                                             /><span class="ml-2"
                                                 >Classic Green</span
@@ -175,7 +173,7 @@
                                                 name="displayColor"
                                                 value="#FFFFFF"
                                                 bind:group={
-                                                    localSettings.displayColor
+                                                    $localSettings.displayColor
                                                 }
                                             /><span class="ml-2">White</span
                                             ></label
@@ -187,7 +185,7 @@
                                                 name="displayColor"
                                                 value="#FFBF00"
                                                 bind:group={
-                                                    localSettings.displayColor
+                                                    $localSettings.displayColor
                                                 }
                                             /><span class="ml-2">Amber</span
                                             ></label
@@ -200,7 +198,7 @@
                                             type="checkbox"
                                             class="form-checkbox bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
                                             bind:checked={
-                                                localSettings.scanlineEffect
+                                                $localSettings.scanlineEffect
                                             }
                                         /><span class="ml-2 text-gray-300"
                                             >Enable Scanline Effect</span
@@ -227,7 +225,7 @@
                                         min="100"
                                         max="2000"
                                         step="50"
-                                        bind:value={localSettings.clockSpeed}
+                                        bind:value={$localSettings.clockSpeed}
                                         class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
                                     />
                                 </div>
@@ -243,7 +241,7 @@
                                                 class="form-radio bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
                                                 value={700}
                                                 bind:group={
-                                                    localSettings.clockSpeed
+                                                    $localSettings.clockSpeed
                                                 }
                                             /><span class="ml-2"
                                                 >Original (700Hz)</span
@@ -255,7 +253,7 @@
                                                 class="form-radio bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
                                                 value={1400}
                                                 bind:group={
-                                                    localSettings.clockSpeed
+                                                    $localSettings.clockSpeed
                                                 }
                                             /><span class="ml-2"
                                                 >Fast (1400Hz)</span
@@ -267,7 +265,7 @@
                                                 class="form-radio bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
                                                 value={2000}
                                                 bind:group={
-                                                    localSettings.clockSpeed
+                                                    $localSettings.clockSpeed
                                                 }
                                             /><span class="ml-2"
                                                 >Turbo (2000Hz)</span
