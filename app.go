@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -18,27 +19,67 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// Settings defines the user-configurable options for the emulator.
+type Settings struct {
+	ClockSpeed     int            `json:"clockSpeed"`
+	DisplayColor   string         `json:"displayColor"`
+	ScanlineEffect bool           `json:"scanlineEffect"`
+	KeyMap         map[string]int `json:"keyMap"`
+}
+
+// DefaultKeyMap returns the default keyboard to CHIP-8 key mappings.
+func DefaultKeyMap() map[string]int {
+	return map[string]int{
+		"1": 0x1, "2": 0x2, "3": 0x3, "4": 0xc,
+		"q": 0x4, "w": 0x5, "e": 0x6, "r": 0xd,
+		"a": 0x7, "s": 0x8, "d": 0x9, "f": 0xe,
+		"z": 0xa, "x": 0x0, "c": 0xb, "v": 0xf,
+	}
+}
+
 // App struct
 type App struct {
-	ctx           context.Context
-	cpu           *chip8.Chip8
-	frontendReady chan struct{}
-	cpuSpeed      time.Duration // Use time.Duration for clarity
-	logBuffer     []string
-	logMutex      sync.Mutex
-	isPaused      bool
-	pauseMutex    sync.Mutex
-	romLoaded     []byte // Store the loaded ROM data for soft reset
+	ctx context.Context
+
+	cpu *chip8.Chip8
+
+	isPaused   bool
+	pauseMutex sync.Mutex
+
+	// Used to signal the emulator loop to stop
+	quitChan chan struct{}
+
+	// Used to signal that the emulator loop has stopped
+	doneChan chan struct{}
+
+	// Used to signal that a ROM has been loaded
+	romLoadedChan chan struct{}
+
+	// Used to signal that the emulator has started running
+	emulatorStartedChan chan struct{}
+
+	// Log buffer for the frontend
+	logBuffer []string
+	logMutex  sync.Mutex
+
+	isDebugging bool // To track if the debug panel is active
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
+	// Get user config directory
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		log.Fatalf("Failed to get user config dir: %v", err)
+	}
+	appConfigDir := filepath.Join(configDir, "chip8-wails")
+
 	return &App{
 		cpu:           chip8.New(),
 		frontendReady: make(chan struct{}),
-		cpuSpeed:      time.Second / 700, // Default to 700Hz
 		logBuffer:     make([]string, 0, 100),
-		isPaused:      true, // Start paused
+		isPaused:      true,
+		settingsPath:  filepath.Join(appConfigDir, "settings.json"),
 	}
 }
 
@@ -59,6 +100,11 @@ func (a *App) startup(ctx context.Context) {
 		os.Mkdir("./roms", 0755)
 		a.appendLog("Created 'roms' directory. Please place your .ch8 files here.")
 	}
+
+	// Load settings on startup
+	a.loadSettings()
+
+	// Start the main emulation loop
 	go a.runEmulator()
 }
 
@@ -103,34 +149,99 @@ func (a *App) runEmulator() {
 			a.pauseMutex.Unlock()
 
 			if isRunning {
-				// Handle timers at a consistent 60Hz
-				if a.cpu.DelayTimer > 0 {
-					a.cpu.DelayTimer--
-				}
-				if a.cpu.SoundTimer > 0 {
-					// Beep only when timer is active
-					a.PlayBeep()
-					a.cpu.SoundTimer--
-				}
+				a.cpu.UpdateTimers()
 			}
 
-			// Push updates to the UI at a consistent 60Hz
+			// --- OPTIMIZATION ---
+			// Only push updates if the debug panel is active
+			if a.isDebugging {
+				runtime.EventsEmit(a.ctx, "debugUpdate", a.cpu.GetState())
+			}
+
+			// The display update is separate and should always happen if the draw flag is set
 			if a.cpu.DrawFlag {
-				// Frontend expects a base64 string for display updates.
 				displayData := base64.StdEncoding.EncodeToString(a.cpu.Display[:])
 				runtime.EventsEmit(a.ctx, "displayUpdate", displayData)
 				a.cpu.ClearDrawFlag()
 			}
-			runtime.EventsEmit(a.ctx, "debugUpdate", a.cpu.GetState())
 		}
 	}
 }
 
 // --- Go Functions Callable from Frontend ---
 
+// loadSettings reads settings from disk or creates a default file.
+func (a *App) loadSettings() {
+	// Ensure the config directory exists
+	configDir := filepath.Dir(a.settingsPath)
+	if _, err := os.Stat(configDir); os.IsNotExist(err) {
+		os.MkdirAll(configDir, 0755)
+	}
+
+	data, err := ioutil.ReadFile(a.settingsPath)
+	if err != nil {
+		// If file doesn't exist, create it with defaults
+		a.appendLog("Settings file not found, creating with defaults.")
+		a.settings = Settings{
+			ClockSpeed:     700,
+			DisplayColor:   "#33FF00",
+			ScanlineEffect: false,
+			KeyMap:         DefaultKeyMap(),
+		}
+		// Save the new default settings
+		a.SaveSettings(a.settings)
+		return
+	}
+
+	// If file exists, unmarshal it
+	if err := json.Unmarshal(data, &a.settings); err != nil {
+		a.appendLog(fmt.Sprintf("Error reading settings.json: %v. Using defaults.", err))
+		// Handle case of corrupted JSON
+		a.settings = Settings{
+			ClockSpeed:     700,
+			DisplayColor:   "#33FF00",
+			ScanlineEffect: false,
+			KeyMap:         DefaultKeyMap(),
+		}
+	} else {
+		a.appendLog("Settings loaded successfully.")
+	}
+
+	// Apply the loaded clock speed
+	a.SetClockSpeed(a.settings.ClockSpeed)
+}
+
+// SaveSettings is a new bindable method to save settings from the frontend.
+func (a *App) SaveSettings(settings Settings) error {
+	a.appendLog("Saving settings...")
+	a.settings = settings // Update the app's internal state
+
+	// Apply the new clock speed immediately
+	a.SetClockSpeed(settings.ClockSpeed)
+
+	data, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		a.appendLog(fmt.Sprintf("Failed to marshal settings: %v", err))
+		return err
+	}
+
+	err = ioutil.WriteFile(a.settingsPath, data, 0644)
+	if err != nil {
+		a.appendLog(fmt.Sprintf("Failed to write settings file: %v", err))
+		return err
+	}
+
+	a.appendLog("Settings saved successfully.")
+	return nil
+}
+
+// GetInitialState now needs to include settings
 func (a *App) GetInitialState() map[string]interface{} {
-	a.appendLog("Frontend connected, providing initial state.")
-	return a.cpu.GetState()
+	a.appendLog("Frontend connected, providing initial state and settings.")
+	return map[string]interface{}{
+		"cpuState": a.cpu.GetState(),
+		"settings": a.settings,
+	}
 }
 
 func (a *App) GetDisplay() []byte {
@@ -141,16 +252,31 @@ func (a *App) GetDisplay() []byte {
 	return displayCopy
 }
 
-func (a *App) LoadROM(romName string) error {
-	a.appendLog(fmt.Sprintf("Attempting to load ROM: %s", romName))
-	romPath := filepath.Join("roms", romName)
-	data, err := ioutil.ReadFile(romPath)
-	if err != nil {
-		errMsg := fmt.Sprintf("Error reading ROM file %s: %v", romName, err)
-		a.appendLog(errMsg)
-		return fmt.Errorf(errMsg)
+// LoadROMFromFile opens a file dialog and loads the selected ROM.
+func (a *App) LoadROMFromFile() (string, error) {
+	selection, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title:   "Load CHIP-8 ROM",
+		Filters: []runtime.FileFilter{{DisplayName: "CHIP-8 ROMs (*.ch8, *.c8)", Pattern: "*.ch8;*.c8"}},
+	})
+	if err != nil || selection == "" {
+		return "", err // User cancelled or error
 	}
 
+	data, err := ioutil.ReadFile(selection)
+	if err != nil {
+		errMsg := fmt.Sprintf("Error reading ROM file %s: %v", selection, err)
+		a.appendLog(errMsg)
+		return "", fmt.Errorf(errMsg)
+	}
+
+	romName := filepath.Base(selection)
+	a.loadROMFromData(data, romName)
+
+	return romName, nil
+}
+
+// Internal helper to avoid code duplication
+func (a *App) loadROMFromData(data []byte, romName string) error {
 	a.cpu.Reset()
 	if err := a.cpu.LoadROM(data); err != nil {
 		errMsg := fmt.Sprintf("Error loading ROM data %s: %v", romName, err)
@@ -169,6 +295,19 @@ func (a *App) LoadROM(romName string) error {
 	runtime.EventsEmit(a.ctx, "statusUpdate", statusMsg)
 	a.appendLog(statusMsg)
 	return nil
+}
+
+// Modify the existing LoadROM to use the helper
+func (a *App) LoadROM(romName string) error {
+	a.appendLog(fmt.Sprintf("Attempting to load ROM from browser: %s", romName))
+	romPath := filepath.Join("roms", romName)
+	data, err := ioutil.ReadFile(romPath)
+	if err != nil {
+		errMsg := fmt.Sprintf("Error reading ROM file %s: %v", romName, err)
+		a.appendLog(errMsg)
+		return fmt.Errorf(errMsg)
+	}
+	return a.loadROMFromData(data, romName)
 }
 
 func (a *App) Reset() {

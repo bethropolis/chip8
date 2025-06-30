@@ -1,0 +1,136 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradient for the screen -->
+    <linearGradient id="screenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d0d0d;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Text gradient -->
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ff88;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00cc66;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Main console body -->
+  <rect x="30" y="30" width="140" height="140" fill="#2a2a2a" rx="12" stroke="#444" stroke-width="2"/>
+  
+  <!-- Screen bezel -->
+  <rect x="45" y="45" width="110" height="70" fill="#1a1a1a" rx="8"/>
+  
+  <!-- Screen -->
+  <rect x="52" y="52" width="96" height="56" fill="url(#screenGradient)" rx="4"/>
+  
+  <!-- Pixelated CHIP-8 display content -->
+  <g fill="#00ff88" opacity="0.9">
+    <!-- Large pixelated "8" centered in screen -->
+    <rect x="80" y="60" width="5" height="5"/>
+    <rect x="85" y="60" width="5" height="5"/>
+    <rect x="90" y="60" width="5" height="5"/>
+    <rect x="95" y="60" width="5" height="5"/>
+    <rect x="100" y="60" width="5" height="5"/>
+    <rect x="105" y="60" width="5" height="5"/>
+    <rect x="110" y="60" width="5" height="5"/>
+    <rect x="115" y="60" width="5" height="5"/>
+    
+    <rect x="80" y="65" width="5" height="5"/>
+    <rect x="115" y="65" width="5" height="5"/>
+    
+    <rect x="80" y="70" width="5" height="5"/>
+    <rect x="115" y="70" width="5" height="5"/>
+    
+    <rect x="80" y="75" width="5" height="5"/>
+    <rect x="85" y="75" width="5" height="5"/>
+    <rect x="90" y="75" width="5" height="5"/>
+    <rect x="95" y="75" width="5" height="5"/>
+    <rect x="100" y="75" width="5" height="5"/>
+    <rect x="105" y="75" width="5" height="5"/>
+    <rect x="110" y="75" width="5" height="5"/>
+    <rect x="115" y="75" width="5" height="5"/>
+    
+    <rect x="80" y="80" width="5" height="5"/>
+    <rect x="115" y="80" width="5" height="5"/>
+    
+    <rect x="80" y="85" width="5" height="5"/>
+    <rect x="115" y="85" width="5" height="5"/>
+    
+    <rect x="80" y="90" width="5" height="5"/>
+    <rect x="85" y="90" width="5" height="5"/>
+    <rect x="90" y="90" width="5" height="5"/>
+    <rect x="95" y="90" width="5" height="5"/>
+    <rect x="100" y="90" width="5" height="5"/>
+    <rect x="105" y="90" width="5" height="5"/>
+    <rect x="110" y="90" width="5" height="5"/>
+    <rect x="115" y="90" width="5" height="5"/>
+    
+    <!-- Small decorative pixels -->
+    <rect x="125" y="65" width="3" height="3"/>
+    <rect x="125" y="70" width="3" height="3"/>
+    <rect x="130" y="80" width="3" height="3"/>
+    <rect x="135" y="85" width="3" height="3"/>
+    
+    <rect x="65" y="70" width="3" height="3"/>
+    <rect x="65" y="80" width="3" height="3"/>
+    <rect x="65" y="90" width="3" height="3"/>
+  </g>
+  
+  <!-- Screen glow -->
+  <rect x="52" y="52" width="96" height="56" fill="none" stroke="#00ff88" stroke-width="1" opacity="0.4" rx="4" filter="url(#glow)"/>
+  
+  <!-- Control buttons - 4x4 grid like CHIP-8 keypad -->
+  <g fill="#333" stroke="#555" stroke-width="1">
+    <!-- Top row -->
+    <circle cx="55" cy="130" r="4"/>
+    <circle cx="75" cy="130" r="4"/>
+    <circle cx="95" cy="130" r="4"/>
+    <circle cx="115" cy="130" r="4"/>
+    
+    <!-- Second row -->
+    <circle cx="55" cy="145" r="4"/>
+    <circle cx="75" cy="145" r="4"/>
+    <circle cx="95" cy="145" r="4"/>
+    <circle cx="115" cy="145" r="4"/>
+    
+    <!-- Third row -->
+    <circle cx="55" cy="160" r="4"/>
+    <circle cx="75" cy="160" r="4"/>
+    <circle cx="95" cy="160" r="4"/>
+    <circle cx="115" cy="160" r="4"/>
+    
+    <!-- Bottom row -->
+    <circle cx="135" cy="130" r="4"/>
+    <circle cx="135" cy="145" r="4"/>
+    <circle cx="135" cy="160" r="4"/>
+    <circle cx="155" cy="160" r="4"/>
+  </g>
+  
+  <!-- Power indicator -->
+  <circle cx="155" cy="40" r="3" fill="#ff4444" opacity="0.8">
+    <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Corner circuit details -->
+  <g stroke="#00ff88" stroke-width="1" fill="none" opacity="0.3">
+    <line x1="15" y1="15" x2="25" y2="15"/>
+    <line x1="15" y1="15" x2="15" y2="25"/>
+    
+    <line x1="175" y1="15" x2="185" y2="15"/>
+    <line x1="185" y1="15" x2="185" y2="25"/>
+    
+    <line x1="15" y1="185" x2="25" y2="185"/>
+    <line x1="15" y1="175" x2="15" y2="185"/>
+    
+    <line x1="175" y1="185" x2="185" y2="185"/>
+    <line x1="185" y1="175" x2="185" y2="185"/>
+  </g>
+</svg>

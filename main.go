@@ -9,10 +9,14 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+//go:embed build/appicon.png
+var icon []byte
 
 func main() {
 	// Create an instance of the app structure.
@@ -33,12 +37,13 @@ func main() {
 		Bind: []interface{}{
 			app,
 		},
+		Linux: &linux.Options{
+			Icon: icon,
+		},
 		Menu: menu.NewMenuFromItems(
 			menu.SubMenu("File", menu.NewMenuFromItems(
-				menu.Text("Load ROM", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
-					if app.ctx != nil {
-						runtime.EventsEmit(app.ctx, "menu:loadrom")
-					}
+								menu.Text("Load ROM", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
+					go app.LoadROMFromFile() // Run in a goroutine to not block the UI
 				}),
 				menu.Separator(),
 				menu.Text("Quit", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {

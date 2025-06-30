@@ -46,6 +46,10 @@ export function LoadROM(arg1) {
   return window['go']['main']['App']['LoadROM'](arg1);
 }
 
+export function LoadROMFromFile() {
+  return window['go']['main']['App']['LoadROMFromFile']();
+}
+
 export function LoadState(arg1) {
   return window['go']['main']['App']['LoadState'](arg1);
 }
@@ -64,6 +68,10 @@ export function Reset() {
 
 export function SaveScreenshot(arg1) {
   return window['go']['main']['App']['SaveScreenshot'](arg1);
+}
+
+export function SaveSettings(arg1) {
+  return window['go']['main']['App']['SaveSettings'](arg1);
 }
 
 export function SaveState() {

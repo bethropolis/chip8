@@ -9,49 +9,6 @@
 
     async function fetchROMs() {
         try {
-            // FIX: Add a fallback to an empty array in case the backend returns null
-            const result = await GetROMs();
-            roms = result || [];
-
-            if (roms.length === 0) {
-                // This check will now work safely
-                showNotification("No ROMs found in ./roms directory.", "warning");
-            }
-        } catch (error) {
-            showNotification(`Failed to load ROM list: ${error}`, "error");
-            console.error("Error fetching ROMs:", error);
-            roms = []; // Also set to empty array on error to prevent #each from failing
-        }
-    }
-
-    async function handleLoadSelectedROM() {
-        if (selectedROM) {
-            try {
-                await LoadROM(selectedROM);
-                showNotification(`ROM loaded: ${selectedROM}`, "success");
-            } catch (error) {
-                showNotification(`Failed to load ROM: ${error}`, "error");
-            }
-        } else {
-            showNotification("Please select a ROM first.", "warning");
-        }
-    }
-
-    onMount(fetchROMs);
-</script>
-
-<!-- The HTML part remains the same. The #each block will now be safe. -->
-<script>
-    import { onMount } from 'svelte';
-    import { GetROMs, LoadROM } from '../wailsjs/go/main/App';
-    import { showNotification } from './stores.js';
-    import { Play } from 'lucide-svelte';
-
-    let roms = [];
-    let selectedROM = '';
-
-    async function fetchROMs() {
-        try {
             const result = await GetROMs();
             roms = result || [];
 

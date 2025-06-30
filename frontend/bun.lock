@@ -5,6 +5,7 @@
       "name": "frontend",
       "dependencies": {
         "lucide-svelte": "^0.525.0",
+        "svelte-gamepad": "^0.1.1",
       },
       "devDependencies": {
         "@sveltejs/vite-plugin-svelte": "^1.0.1",
@@ -206,6 +207,8 @@
     "supports-preserve-symlinks-flag": ["supports-preserve-symlinks-flag@1.0.0", "", {}, "sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w=="],
 
     "svelte": ["svelte@3.59.2", "", {}, "sha512-vzSyuGr3eEoAtT/A6bmajosJZIUWySzY2CzB3w2pgPvnkUjGqlDnsNnA0PMO+mMAhuyMul6C2uuZzY6ELSkzyA=="],
+
+    "svelte-gamepad": ["svelte-gamepad@0.1.1", "", {}, "sha512-ksXYaRrErB6y6eROZbIOHpsnKzVUyZMvK6g6fMiM3J1R7RzjMZHvu8DXrEuqcB0MyvfUuSzq14mq0KOlKqC31A=="],
 
     "svelte-hmr": ["svelte-hmr@0.15.3", "", { "peerDependencies": { "svelte": "^3.19.0 || ^4.0.0" } }, "sha512-41snaPswvSf8TJUhlkoJBekRrABDXDMdpNpT2tfHIv4JuhgvHqLMhEPGtaQn0BmbNSTkuz2Ed20DF2eHw0SmBQ=="],
 
