@@ -42,6 +42,7 @@ jobs:
         with:
           distribution: goreleaser
           args: release --clean
+          version: latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # CGO is required for Wails cross-compilation
