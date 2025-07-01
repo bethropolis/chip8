@@ -6,6 +6,10 @@ export function ClearBreakpoint(arg1) {
   return window['go']['main']['App']['ClearBreakpoint'](arg1);
 }
 
+export function FrontendReady() {
+  return window['go']['main']['App']['FrontendReady']();
+}
+
 export function GetInitialState() {
   return window['go']['main']['App']['GetInitialState']();
 }

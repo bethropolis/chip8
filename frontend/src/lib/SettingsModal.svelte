@@ -45,7 +45,6 @@
 
     // --- Key Remapping Logic ---
     function startRemap(event, chip8KeyToRemap) {
-        // --- FIX: Correctly assign the key to remap ---
         remappingKey = chip8KeyToRemap;
         event.target.value = "Press key...";
         window.addEventListener("keydown", handleRemapKeyDown, { once: true });

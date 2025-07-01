@@ -17,7 +17,6 @@
         LoadROM,
         LoadStateFromFile,
         SaveScreenshot,
-        SaveState,
         SaveStateToFile,
         SoftReset,
         TogglePause,

@@ -4,6 +4,8 @@ import {settings} from '../models';
 
 export function ClearBreakpoint(arg1:number):Promise<void>;
 
+export function FrontendReady():Promise<void>;
+
 export function GetInitialState():Promise<Record<string, any>>;
 
 export function GetLogs():Promise<Array<string>>;
