@@ -3,20 +3,29 @@ name: 📦 Release
 on:
   push:
     tags:
-      - "v*.*.*" # Trigger on semantic version tags like v1.2.3
+      - "v*.*.*"
 
 permissions:
-  contents: write # Allows creating a GitHub release
+  contents: write
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux/amd64
+            name: linux
+          - os: windows-latest
+            platform: windows/amd64
+            name: windows
+          - os: macos-latest
+            platform: darwin/universal
+            name: macos
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          # Fetch all history for a richer changelog
-          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -28,14 +37,51 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install Wails CLI v2.9.0
-        # Pinning the version ensures your CI build is repeatable
+      - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.9.0
 
-      - name: Install Linux Dependencies for Wails Cross-Compilation
+      - name: Install Linux Dependencies (Linux only)
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev gcc-mingw-w64
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev
+
+      - name: Install Frontend Dependencies
+        run: bun install --cwd ./frontend
+
+      - name: Build Application
+        run: wails build -clean -tags webkit2_41 -platform="${{ matrix.platform }}" -ldflags="-s -w"
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.name }}
+          path: build/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare Build Directory
+        run: |
+          mkdir -p build/bin
+          # Copy binaries from artifacts
+          cp artifacts/build-linux/bin/* build/bin/ || true
+          cp artifacts/build-windows/bin/* build/bin/ || true
+          cp artifacts/build-macos/bin/* build/bin/ || true
+          # Copy other files
+          cp -r artifacts/build-linux/linux build/ || true
+          ls -la build/
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
@@ -45,5 +91,3 @@ jobs:
           version: "~> v2"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # CGO is required for Wails cross-compilation
-          CGO_ENABLED: 1

@@ -1,14 +1,8 @@
-# Use the mandatory v2 schema
 version: 2
-before:
-  hooks:
-    - bun install --cwd ./frontend
-    - wails build -clean -tags webkit2_41 -platform="linux/amd64,windows/amd64,darwin/universal" -ldflags="-s -w"
 
-# Since we're using pre-built binaries, we don't need build configs
-# GoReleaser will work with the archives and packages sections
+builds:
+  - skip: true
 
-# This section creates .zip and .tar.gz archives from pre-built binaries
 archives:
   - id: linux-archive
     format: tar.gz
@@ -30,6 +24,7 @@ archives:
     files:
       - "build/bin/{{ .ProjectName }}.app/**/*"
 
+# For Linux packages, don't reference build IDs since we skipped all builds
 nfpms:
   - id: linux-packages
     formats: [deb, rpm]
