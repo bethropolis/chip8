@@ -40,7 +40,7 @@ jobs:
           files: dist/*.AppImage dist/*.deb dist/*.rpm
 
   linux-arm64:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm64
     permissions:
       contents: write
     steps:
