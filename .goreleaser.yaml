@@ -1,14 +1,10 @@
 # Use the mandatory v2 schema
 version: 2
 
-# This hook runs BEFORE GoReleaser's main logic.
-# We use it to build the Wails application for all platforms at once.
 before:
   hooks:
     - bun install --cwd ./frontend
-    # This single command cross-compiles for all target platforms.
-    # Wails will create the .exe and .app bundles correctly.
-    - wails build -clean -platform="linux/amd64,windows/amd64,darwin/universal" -ldflags="-s -w"
+    - wails build -clean -tags webkit2_41 -platform="linux/amd64,windows/amd64,darwin/universal" -ldflags="-s -w"
 
 # This section tells GoReleaser where to find the pre-built binaries.
 builds:
