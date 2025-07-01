@@ -88,6 +88,7 @@ jobs:
 
       - name: Install create-dmg
         run: brew install create-dmg
+
       - name: Build DMG
         run: |
           DMG_NAME="chip8-wails-${{ github.ref_name }}.dmg"
@@ -95,11 +96,10 @@ jobs:
             --volname "chip8-wails" \
             --window-size 540 380 \
             --app-drop-link 380 120 \
-            --dmg-title "chip8-wails" \
-            --no-internet-enable \
             "$DMG_NAME" \
             "chip8-wails.app"
         working-directory: build/bin
+
       - uses: softprops/action-gh-release@v2
         with:
           files: "build/bin/chip8-wails-*.dmg"
