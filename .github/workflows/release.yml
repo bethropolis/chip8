@@ -12,12 +12,13 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev
-    - uses: dAppServer/wails-build-action@v3
+    - uses: dAppServer/wails-build-action@main
       with:
         build-name: chip8-wails
         build-platform: linux/amd64
         package: false
         tags: webkit2_41
+        wails-version: "v2.9.0"
     - name: Build AppImage
       run: wails generate appimage \
         -binary ./build/bin/chip8-wails \
@@ -37,11 +38,12 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: dAppServer/wails-build-action@v3
+    - uses: dAppServer/wails-build-action@main
       with:
         build-name: chip8-wails
         build-platform: windows/amd64
         package: false
+        wails-version: "v2.9.0"
     - uses: actions/upload-artifact@v4
       with:
         name: chip8-wails-windows-exe
@@ -54,11 +56,12 @@ jobs:
     runs-on: macos-14
     steps:
     - uses: actions/checkout@v4
-    - uses: dAppServer/wails-build-action@v3
+    - uses: dAppServer/wails-build-action@main
       with:
         build-name: chip8-wails
         build-platform: darwin/universal
         package: false
+        wails-version: "v2.9.0"
     - name: Install create-dmg
       run: brew install create-dmg
     - name: Build DMG
