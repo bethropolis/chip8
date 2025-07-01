@@ -88,7 +88,8 @@ jobs:
         --window-size 540 380 \
         --app-drop-link 380 120 \
         "chip8-wails-${{ github.ref_name }}.dmg" \
-        "${{ github.workspace }}/build/bin/chip8-wails.app"
+        chip8-wails.app
+      working-directory: build/bin
     - uses: softprops/action-gh-release@v2
       with:
         files: "chip8-wails-*.dmg"
