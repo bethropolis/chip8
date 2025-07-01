@@ -7,6 +7,12 @@
 
 This is a feature-rich CHIP-8 emulator built with Wails (Go backend) and Svelte (frontend) with Tailwind CSS v4 for styling.
 
+
+
+<p align="center">
+  <img src="./.githubasserts/emulator.png" alt="CHIP-8 Emulator Screenshot" />
+</p>
+
 ## Download
 
 You can download the latest releases for your operating system from the [releases page](https://github.com/bethropolis/chip8/releases).
