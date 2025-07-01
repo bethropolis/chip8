@@ -1,4 +1,4 @@
-export namespace main {
+export namespace settings {
 	
 	export class Settings {
 	    clockSpeed: number;

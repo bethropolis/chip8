@@ -6,14 +6,6 @@ export function ClearBreakpoint(arg1) {
   return window['go']['main']['App']['ClearBreakpoint'](arg1);
 }
 
-export function FrontendReady() {
-  return window['go']['main']['App']['FrontendReady']();
-}
-
-export function GetDisplay() {
-  return window['go']['main']['App']['GetDisplay']();
-}
-
 export function GetInitialState() {
   return window['go']['main']['App']['GetInitialState']();
 }
@@ -62,24 +54,12 @@ export function OpenGitHubLink() {
   return window['go']['main']['App']['OpenGitHubLink']();
 }
 
-export function PlayBeep() {
-  return window['go']['main']['App']['PlayBeep']();
-}
-
-export function Reset() {
-  return window['go']['main']['App']['Reset']();
-}
-
 export function SaveScreenshot(arg1) {
   return window['go']['main']['App']['SaveScreenshot'](arg1);
 }
 
 export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
-}
-
-export function SaveState() {
-  return window['go']['main']['App']['SaveState']();
 }
 
 export function SaveStateToFile() {
