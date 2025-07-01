@@ -12,6 +12,10 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: latest # Or a specific version like '1.1.x'
     - uses: dAppServer/wails-build-action@main
       with:
         build-name: chip8-wails
@@ -38,6 +42,10 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: latest # Or a specific version like '1.1.x'
     - uses: dAppServer/wails-build-action@main
       with:
         build-name: chip8-wails
@@ -56,6 +64,10 @@ jobs:
     runs-on: macos-14
     steps:
     - uses: actions/checkout@v4
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: latest # Or a specific version like '1.1.x'
     - uses: dAppServer/wails-build-action@main
       with:
         build-name: chip8-wails
