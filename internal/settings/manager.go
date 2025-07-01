@@ -13,6 +13,8 @@ type Settings struct {
 	DisplayColor   string         `json:"displayColor"`
 	ScanlineEffect bool           `json:"scanlineEffect"`
 	KeyMap         map[string]int `json:"keyMap"`
+	PixelScale     int            `json:"pixelScale"`
+	RomsPath       string         `json:"romsPath"`
 }
 
 /*
@@ -23,6 +25,8 @@ func DefaultSettings() Settings {
 		ClockSpeed:     700,
 		DisplayColor:   "#33FF00",
 		ScanlineEffect: false,
+		PixelScale:     10,       // Default to 10x scale
+		RomsPath:       "./roms", // Default to a local 'roms' folder
 		KeyMap: map[string]int{
 			"1": 0x1, "2": 0x2, "3": 0x3, "4": 0xc,
 			"q": 0x4, "w": 0x5, "e": 0x6, "r": 0xd,
@@ -57,13 +61,18 @@ func (m *Manager) Load() (Settings, error) {
 		}
 		return Settings{}, fmt.Errorf("failed to read settings file: %w", err)
 	}
-
 	var s Settings
 	if err := json.Unmarshal(data, &s); err != nil {
 		fmt.Printf("Warning: could not parse settings.json, falling back to defaults: %v\n", err)
-		return DefaultSettings(), nil
+		s = DefaultSettings() // Use defaults if parsing fails
 	}
-
+	// Ensure new fields have default values if loading old settings file
+	if s.PixelScale == 0 {
+		s.PixelScale = 10
+	}
+	if s.RomsPath == "" {
+		s.RomsPath = "./roms"
+	}
 	return s, nil
 }
 
