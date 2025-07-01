@@ -1,35 +1,38 @@
 # Use the mandatory v2 schema
 version: 2
-
 before:
   hooks:
     - bun install --cwd ./frontend
     - wails build -clean -tags webkit2_41 -platform="linux/amd64,windows/amd64,darwin/universal" -ldflags="-s -w"
 
-# This section tells GoReleaser where to find the pre-built binaries.
+# Reference the pre-built binaries
 builds:
   - id: linux
     goos: [linux]
     goarch: [amd64]
-    binary: "build/bin/{{ .ProjectName }}"
+    binary: "{{ .ProjectName }}"
+    # Point to where Wails puts the Linux binary
+    main: "./build/bin/{{ .ProjectName }}"
     skip: true
 
   - id: windows
     goos: [windows]
     goarch: [amd64]
-    binary: "build/bin/{{ .ProjectName }}.exe"
+    binary: "{{ .ProjectName }}"
+    # Point to where Wails puts the Windows binary
+    main: "./build/bin/{{ .ProjectName }}.exe"
     skip: true
 
   - id: macos
     goos: [darwin]
     goarch: [amd64, arm64]
-    binary: "build/bin/{{ .ProjectName }}.app"
+    binary: "{{ .ProjectName }}"
+    # Point to where Wails puts the macOS app
+    main: "./build/bin/{{ .ProjectName }}.app"
     skip: true
 
-# This section creates .zip and .tar.gz archives.
 archives:
   - id: linux-archive
-    # Use the new `ids` key to link to builds
     ids: [linux]
     format: tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_linux_amd64"
@@ -46,7 +49,7 @@ archives:
 
 nfpms:
   - id: linux-packages
-    ids: [linux] # Use the new `ids` key
+    ids: [linux]
     formats: [deb, rpm]
     maintainer: "bethropolis@outlook.com"
     description: "A CHIP-8 emulator built with Wails."
@@ -64,5 +67,4 @@ checksum:
   name_template: "checksums.txt"
 
 release:
-  # GoReleaser will automatically generate a changelog from your commits.
   prerelease: auto
