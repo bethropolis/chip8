@@ -1,12 +1,13 @@
-[![Build Status](https://github.com/bethropolis/chip8-wails/actions/workflows/test-build.yml/badge.svg)](https://github.com/bethropolis/chip8-wails/actions/workflows/test-build.yml) [![Go Version](https://img.shields.io/badge/Go-1.22-00ADD8?logo=go&logoColor=white)](https://go.dev/) [![Wails Version](https://img.shields.io/badge/Wails-v2-blueviolet?logo=wails&logoColor=white)](https://wails.io/) [![License](https://img.shields.io/github/license/bethropolis/chip8-wails)](https://github.com/bethropolis/chip8-wails/blob/main/LICENSE)
-
 # CHIP-8 Emulator
+
+[![Build Status](https://github.com/bethropolis/chip8/actions/workflows/test-build.yml/badge.svg)](https://github.com/bethropolis/chip8/actions/workflows/test-build.yml) [![Go Version](https://img.shields.io/badge/Go-1.22-00ADD8?logo=go&logoColor=white)](https://go.dev/) [![Wails Version](https://img.shields.io/badge/Wails-v2-blueviolet?logo=wails&logoColor=white)](https://wails.io/) [![License](https://img.shields.io/github/license/bethropolis/chip8)](https://github.com/bethropolis/chip8/blob/main/LICENSE)
+
 
 This is a feature-rich CHIP-8 emulator built with Wails (Go backend) and Svelte (frontend) with Tailwind CSS v4 for styling.
 
 ## Download
 
-You can download the latest releases for your operating system from the [releases page](https://github.com/bethropolis/chip8-wails/releases).
+You can download the latest releases for your operating system from the [releases page](https://github.com/bethropolis/chip8/releases).
 
 ## Features
 
@@ -27,7 +28,7 @@ To run the emulator, follow these steps:
 
 1.  **Navigate to the project directory:**
     ```bash
-    cd chip8-wails
+    cd chip8
     ```
 
 2.  **Run in development mode:**
@@ -68,7 +69,7 @@ To run the emulator, follow these steps:
 To run Go tests for the CHIP-8 core:
 
 ```bash
-cd chip8-wails
+cd chip8
 go test -v ./chip8
 ```
 
@@ -93,7 +94,7 @@ bun run build
 If you encounter issues, try cleaning the build artifacts and regenerating Wails bindings:
 
 ```bash
-cd chip8-wails
+cd chip8
 rm -rf frontend/node_modules frontend/dist frontend/src/wailsjs
 wails dev
 ```
