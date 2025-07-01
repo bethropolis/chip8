@@ -63,6 +63,7 @@ func TestOpcode00E0(t *testing.T) {
 	c.PC = ProgramStart
 	c.Memory[ProgramStart] = 0x00
 	c.Memory[ProgramStart+1] = 0xE0
+	c.IsRunning = true
 
 	c.EmulateCycle()
 
@@ -87,6 +88,7 @@ func TestOpcode00EE(t *testing.T) {
 	c.PC = ProgramStart
 	c.Memory[ProgramStart] = 0x00
 	c.Memory[ProgramStart+1] = 0xEE
+	c.IsRunning = true
 
 	c.EmulateCycle()
 
@@ -106,6 +108,7 @@ func TestOpcode1NNN(t *testing.T) {
 	c.PC = ProgramStart
 	c.Memory[ProgramStart] = 0x12
 	c.Memory[ProgramStart+1] = 0x34
+	c.IsRunning = true
 
 	c.EmulateCycle()
 
@@ -122,6 +125,7 @@ func TestOpcode6XNN(t *testing.T) {
 	c.PC = ProgramStart
 	c.Memory[ProgramStart] = 0x6A
 	c.Memory[ProgramStart+1] = 0x55
+	c.IsRunning = true
 
 	c.EmulateCycle()
 
@@ -142,6 +146,7 @@ func TestOpcode7XNN(t *testing.T) {
 	c.PC = ProgramStart
 	c.Memory[ProgramStart] = 0x7B
 	c.Memory[ProgramStart+1] = 0x05
+	c.IsRunning = true
 
 	c.EmulateCycle()
 
@@ -161,6 +166,7 @@ func TestOpcodeANNN(t *testing.T) {
 	c.PC = ProgramStart
 	c.Memory[ProgramStart] = 0xA1
 	c.Memory[ProgramStart+1] = 0x23
+	c.IsRunning = true
 
 	c.EmulateCycle()
 
@@ -184,6 +190,7 @@ func TestOpcodeDXYN(t *testing.T) {
 	c.PC = ProgramStart
 	c.Memory[ProgramStart] = 0xD0
 	c.Memory[ProgramStart+1] = 0x15
+	c.IsRunning = true
 
 	c.EmulateCycle()
 
