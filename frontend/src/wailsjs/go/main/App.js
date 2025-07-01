@@ -46,12 +46,12 @@ export function LoadROM(arg1) {
   return window['go']['main']['App']['LoadROM'](arg1);
 }
 
-export function LoadROMFromFile() {
-  return window['go']['main']['App']['LoadROMFromFile']();
+export function LoadROMByPath(arg1) {
+  return window['go']['main']['App']['LoadROMByPath'](arg1);
 }
 
-export function LoadState(arg1) {
-  return window['go']['main']['App']['LoadState'](arg1);
+export function LoadROMFromFile() {
+  return window['go']['main']['App']['LoadROMFromFile']();
 }
 
 export function LoadStateFromFile() {
@@ -82,8 +82,8 @@ export function SaveState() {
   return window['go']['main']['App']['SaveState']();
 }
 
-export function SaveStateToFile(arg1) {
-  return window['go']['main']['App']['SaveStateToFile'](arg1);
+export function SaveStateToFile() {
+  return window['go']['main']['App']['SaveStateToFile']();
 }
 
 export function SetBreakpoint(arg1) {

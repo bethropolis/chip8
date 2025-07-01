@@ -57,9 +57,9 @@ type App struct {
 	frontendReady chan struct{}
 	cpuSpeed      time.Duration // Use time.Duration for clarity
 	logBuffer     []string
-	logMutex      sync.Mutex
+	logMutex      sync.Mutex   // **FIX: Dedicated mutex for logs**
+	mu            sync.RWMutex // A single Read/Write mutex for all other shared state
 	isPaused      bool
-	pauseMutex    sync.Mutex
 	romLoaded     []byte // Store the loaded ROM data for soft reset
 	settings      Settings
 	settingsPath  string
@@ -79,15 +79,17 @@ func NewApp() *App {
 	return &App{
 		cpu:           chip8.New(),
 		frontendReady: make(chan struct{}),
-		logBuffer:     make([]string, 0, 100),
+		logBuffer:     make([]string, 0, 100), // Log buffer has its own mutex
 		isPaused:      true,
 		settingsPath:  filepath.Join(appConfigDir, "settings.json"),
 	}
 }
 
 func (a *App) appendLog(msg string) {
+	// **FIX: Use the dedicated log mutex**
 	a.logMutex.Lock()
 	defer a.logMutex.Unlock()
+
 	log.Println(msg) // Also log to console for easier debugging
 	if len(a.logBuffer) >= 100 {
 		a.logBuffer = a.logBuffer[1:]
@@ -141,18 +143,19 @@ func (a *App) runEmulator() {
 			// This is more efficient than recreating it every cycle.
 			cpuTicker.Reset(a.cpuSpeed)
 
-			a.pauseMutex.Lock()
+			a.mu.RLock()
 			isRunning := !a.isPaused
-			a.pauseMutex.Unlock()
+			a.mu.RUnlock()
 
 			if isRunning {
 				a.cpu.EmulateCycle()
 			}
 
 		case <-timerTicker.C:
-			a.pauseMutex.Lock()
+			a.mu.RLock()
 			isRunning := !a.isPaused
-			a.pauseMutex.Unlock()
+			isDebugging := a.isDebugging
+			a.mu.RUnlock()
 
 			if isRunning {
 				a.cpu.UpdateTimers()
@@ -160,7 +163,7 @@ func (a *App) runEmulator() {
 
 			// --- OPTIMIZATION ---
 			// Only push updates if the debug panel is active
-			if a.isDebugging {
+			if isDebugging {
 				runtime.EventsEmit(a.ctx, "debugUpdate", a.cpu.GetState())
 			}
 
@@ -272,20 +275,9 @@ func (a *App) LoadROMFromFile() (string, error) {
 		Filters: []runtime.FileFilter{{DisplayName: "CHIP-8 ROMs (*.ch8, *.c8)", Pattern: "*.ch8;*.c8"}},
 	})
 	if err != nil || selection == "" {
-		return "", err // User cancelled or error
+		return "", err
 	}
-
-	data, err := ioutil.ReadFile(selection)
-	if err != nil {
-		errMsg := fmt.Sprintf("Error reading ROM file %s: %v", selection, err)
-		a.appendLog(errMsg)
-		return "", fmt.Errorf(errMsg)
-	}
-
-	romName := filepath.Base(selection)
-	a.loadROMFromData(data, romName)
-
-	return romName, nil
+	return a.LoadROMByPath(selection)
 }
 
 // Internal helper to avoid code duplication
@@ -299,10 +291,10 @@ func (a *App) loadROMFromData(data []byte, romName string) error {
 
 	a.romLoaded = data // Store the ROM data
 
-	a.pauseMutex.Lock()
+	a.mu.Lock()
 	a.isPaused = false
 	a.cpu.IsRunning = true
-	a.pauseMutex.Unlock()
+	a.mu.Unlock()
 
 	statusMsg := fmt.Sprintf("Status: Running | ROM: %s", romName)
 	runtime.EventsEmit(a.ctx, "statusUpdate", statusMsg)
@@ -323,11 +315,24 @@ func (a *App) LoadROM(romName string) error {
 	return a.loadROMFromData(data, romName)
 }
 
+// LoadROMByPath loads a ROM from a given absolute or relative path.
+func (a *App) LoadROMByPath(path string) (string, error) {
+	a.appendLog(fmt.Sprintf("Attempting to load ROM from path: %s", path))
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		errMsg := fmt.Sprintf("Error reading ROM file %s: %v", path, err)
+		a.appendLog(errMsg)
+		return "", fmt.Errorf(errMsg)
+	}
+	romName := filepath.Base(path)
+	return romName, a.loadROMFromData(data, romName)
+}
+
 func (a *App) Reset() {
-	a.pauseMutex.Lock()
+	a.mu.Lock()
 	a.isPaused = true
 	a.cpu.Reset()
-	a.pauseMutex.Unlock()
+	a.mu.Unlock()
 
 	statusMsg := "Status: Reset | ROM: None"
 	runtime.EventsEmit(a.ctx, "statusUpdate", statusMsg)
@@ -341,25 +346,28 @@ func (a *App) Reset() {
 
 // SoftReset resets the CPU state and reloads the currently loaded ROM.
 func (a *App) SoftReset() error {
-	if a.romLoaded == nil {
+	a.mu.RLock()
+	romToLoad := a.romLoaded
+	a.mu.RUnlock()
+
+	if romToLoad == nil {
 		return fmt.Errorf("no ROM loaded to soft reset")
 	}
 
-	a.pauseMutex.Lock()
+	a.mu.Lock()
 	a.isPaused = true
 	a.cpu.Reset()
-	if err := a.cpu.LoadROM(a.romLoaded); err != nil {
-		a.pauseMutex.Unlock()
+	if err := a.cpu.LoadROM(romToLoad); err != nil {
+		a.mu.Unlock()
 		return fmt.Errorf("failed to reload ROM during soft reset: %w", err)
 	}
 	a.cpu.IsRunning = true
 	a.isPaused = false
-	a.pauseMutex.Unlock()
+	a.mu.Unlock()
 
 	statusMsg := "Status: Soft Reset | ROM reloaded."
 	a.appendLog(statusMsg)
 	runtime.EventsEmit(a.ctx, "statusUpdate", statusMsg)
-
 	// Force push the updated state to the UI
 	displayData := base64.StdEncoding.EncodeToString(a.cpu.Display[:])
 	runtime.EventsEmit(a.ctx, "displayUpdate", displayData)
@@ -370,11 +378,11 @@ func (a *App) SoftReset() error {
 
 // HardReset resets the CPU state and clears any loaded ROM.
 func (a *App) HardReset() {
-	a.pauseMutex.Lock()
+	a.mu.Lock()
 	a.isPaused = true
 	a.cpu.Reset()
 	a.romLoaded = nil // Clear loaded ROM
-	a.pauseMutex.Unlock()
+	a.mu.Unlock()
 
 	statusMsg := "Status: Hard Reset | ROM cleared."
 	a.appendLog(statusMsg)
@@ -387,17 +395,18 @@ func (a *App) HardReset() {
 }
 
 func (a *App) TogglePause() bool {
-	a.pauseMutex.Lock()
+	a.mu.Lock()
 	a.isPaused = !a.isPaused
 	a.cpu.IsRunning = !a.isPaused
 	isPausedNow := a.isPaused
-	a.pauseMutex.Unlock()
+	a.mu.Unlock()
 
 	if isPausedNow {
 		a.appendLog("Emulation Paused.")
 	} else {
 		a.appendLog("Emulation Resumed.")
 	}
+	runtime.EventsEmit(a.ctx, "pauseUpdate", isPausedNow)
 	return isPausedNow
 }
 
@@ -433,12 +442,16 @@ func (a *App) ClearBreakpoint(address uint16) {
 
 // StartDebugUpdates is called by the frontend when the debug tab is shown.
 func (a *App) StartDebugUpdates() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.appendLog("Debug view activated. Starting debug updates.")
 	a.isDebugging = true
 }
 
 // StopDebugUpdates is called by the frontend when the debug tab is hidden.
 func (a *App) StopDebugUpdates() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.appendLog("Debug view deactivated. Stopping debug updates.")
 	a.isDebugging = false
 }
@@ -515,7 +528,9 @@ func (a *App) GetROMs() ([]string, error) {
 
 func (a *App) SetClockSpeed(speed int) {
 	if speed > 0 {
+		a.mu.Lock()
 		a.cpuSpeed = time.Second / time.Duration(speed)
+		a.mu.Unlock()
 		runtime.EventsEmit(a.ctx, "clockSpeedUpdate", speed)
 		a.appendLog(fmt.Sprintf("Clock speed set to %d Hz", speed))
 	}
@@ -549,10 +564,10 @@ func (a *App) SaveScreenshot(data string) error {
 
 // SaveState returns the current state of the emulator as a gob-encoded byte array.
 func (a *App) SaveState() ([]byte, error) {
-	a.pauseMutex.Lock()
+	a.mu.Lock()
 	a.isPaused = true
 	a.cpu.IsRunning = false // Pause emulation before saving
-	a.pauseMutex.Unlock()
+	a.mu.Unlock()
 
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
@@ -562,8 +577,20 @@ func (a *App) SaveState() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// SaveStateToFile opens a save dialog and writes the provided state to a file.
-func (a *App) SaveStateToFile(state []byte) error {
+// SaveStateToFile combines getting state and saving it.
+func (a *App) SaveStateToFile() error {
+	a.mu.Lock()
+	a.isPaused = true
+	a.cpu.IsRunning = false
+	a.mu.Unlock()
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	if err := enc.Encode(a.cpu); err != nil {
+		return fmt.Errorf("failed to encode CPU state: %w", err)
+	}
+	state := buf.Bytes()
+
 	selection, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		Title:           "Save CHIP-8 State",
 		Filters:         []runtime.FileFilter{{DisplayName: "CHIP-8 State (*.ch8state)", Pattern: "*.ch8state"}},
@@ -577,39 +604,18 @@ func (a *App) SaveStateToFile(state []byte) error {
 		return fmt.Errorf("failed to write state file: %w", err)
 	}
 
-	statusMsg := fmt.Sprintf("State saved to: %s", selection)
-	a.appendLog(statusMsg)
-	runtime.EventsEmit(a.ctx, "statusUpdate", statusMsg)
+	a.appendLog(fmt.Sprintf("State saved to: %s", selection))
 	return nil
 }
 
-// LoadState loads a gob-encoded state into the emulator.
-// This is the corrected version.
-func (a *App) LoadState(state []byte) error {
-	buf := bytes.NewBuffer(state)
-	dec := gob.NewDecoder(buf)
-	var loadedCPU chip8.Chip8
-	if err := dec.Decode(&loadedCPU); err != nil {
-		return fmt.Errorf("failed to decode CPU state: %w", err)
-	}
-
-	a.cpu = &loadedCPU // The lock in LoadStateFromFile handles safety
-
-	statusMsg := "Emulator state loaded."
-	a.appendLog(statusMsg)
-	runtime.EventsEmit(a.ctx, "statusUpdate", statusMsg)
-	return nil
-}
-
-// LoadStateFromFile opens an open dialog, reads a state file, and loads it into the emulator.
-// This is the corrected version.
+// LoadStateFromFile opens a dialog and loads the state.
 func (a *App) LoadStateFromFile() error {
 	selection, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title:   "Load CHIP-8 State",
 		Filters: []runtime.FileFilter{{DisplayName: "CHIP-8 State (*.ch8state)", Pattern: "*.ch8state"}},
 	})
 	if err != nil || selection == "" {
-		return err // User cancelled or error
+		return err
 	}
 
 	data, err := ioutil.ReadFile(selection)
@@ -617,29 +623,32 @@ func (a *App) LoadStateFromFile() error {
 		return fmt.Errorf("failed to read state file: %w", err)
 	}
 
-	// Pause emulation while loading
-	a.pauseMutex.Lock()
-	defer a.pauseMutex.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.isPaused = true
 	a.cpu.IsRunning = false
 
-	err = a.LoadState(data)
-
-	// After loading, force a UI refresh
-	if err == nil {
-		a.appendLog("State loaded successfully. Forcing UI refresh.")
-		displayData := base64.StdEncoding.EncodeToString(a.cpu.Display[:])
-		runtime.EventsEmit(a.ctx, "displayUpdate", displayData)
-		runtime.EventsEmit(a.ctx, "debugUpdate", a.cpu.GetState())
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	var loadedCPU chip8.Chip8
+	if err := dec.Decode(&loadedCPU); err != nil {
+		return fmt.Errorf("failed to decode CPU state: %w", err)
 	}
-	return err
+	a.cpu = &loadedCPU
+
+	// Force a UI refresh
+	a.appendLog("State loaded successfully. Forcing UI refresh.")
+	displayData := base64.StdEncoding.EncodeToString(a.cpu.Display[:])
+	runtime.EventsEmit(a.ctx, "displayUpdate", displayData)
+	runtime.EventsEmit(a.ctx, "debugUpdate", a.cpu.GetState())
+
+	return nil
 }
 
 func (a *App) GetLogs() []string {
+	// **FIX: Use the dedicated log mutex**
 	a.logMutex.Lock()
 	defer a.logMutex.Unlock()
-	// Return a copy to avoid data races if the buffer is modified while
-	// the frontend is processing it.
 	logsCopy := make([]string, len(a.logBuffer))
 	copy(logsCopy, a.logBuffer)
 	return logsCopy

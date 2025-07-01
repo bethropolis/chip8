@@ -56,7 +56,11 @@ func main() {
 		Menu: menu.NewMenuFromItems(
 			menu.SubMenu("File", menu.NewMenuFromItems(
 				menu.Text("Load ROM...", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
-					go app.LoadROMFromFile()
+					app.LoadROMFromFile() // No need for go routine here
+				}),
+				// --- NEW MENU ITEM ---
+				menu.Text("Load State", keys.CmdOrCtrl("l"), func(_ *menu.CallbackData) {
+					runtime.EventsEmit(app.ctx, "menu:loadstate")
 				}),
 				// --- NEW MENU ITEM ---
 				menu.Text("Save State", keys.CmdOrCtrl("s"), func(_ *menu.CallbackData) {

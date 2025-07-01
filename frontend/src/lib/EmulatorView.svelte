@@ -137,7 +137,6 @@
     EventsOn("menu:softreset", handleSoftReset);
     EventsOn("menu:hardreset", handleHardReset);
     EventsOn("menu:loadstate", handleLoadState);
-    EventsOn("menu:loadstate", handleLoadState);
 
         EventsOn("displayUpdate", (base64DisplayBuffer) => {
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
@@ -216,8 +215,7 @@
     /** Save emulator state to file. */
     async function handleSaveState() {
         try {
-            const state = await SaveState();
-            await SaveStateToFile(state);
+            await SaveStateToFile(); // No more two-step process
             showNotification("Emulator state saved!", "success");
         } catch (error) {
             showNotification(`Failed to save state: ${error}`, "error");
@@ -430,6 +428,9 @@
                         on:mousedown={() => handleKeypadPress(hex)}
                         on:mouseup={() => handleKeypadRelease(hex)}
                         on:mouseleave={() => handleKeypadRelease(hex)}
+                        on:touchstart|preventDefault={() => handleKeypadPress(hex)}
+                        on:touchend|preventDefault={() => handleKeypadRelease(hex)}
+                        on:touchcancel|preventDefault={() => handleKeypadRelease(hex)}
                         class="p-2 rounded-md border text-lg font-bold flex flex-col items-center justify-center aspect-square transition-all duration-100 focus:outline-none"
                         class:bg-blue-500={pressedKeys[hex]}
                         class:border-blue-400={pressedKeys[hex]}

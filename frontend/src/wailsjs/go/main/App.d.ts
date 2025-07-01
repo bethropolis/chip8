@@ -24,9 +24,9 @@ export function KeyUp(arg1:number):Promise<void>;
 
 export function LoadROM(arg1:string):Promise<void>;
 
-export function LoadROMFromFile():Promise<string>;
+export function LoadROMByPath(arg1:string):Promise<string>;
 
-export function LoadState(arg1:Array<number>):Promise<void>;
+export function LoadROMFromFile():Promise<string>;
 
 export function LoadStateFromFile():Promise<void>;
 
@@ -42,7 +42,7 @@ export function SaveSettings(arg1:main.Settings):Promise<void>;
 
 export function SaveState():Promise<Array<number>>;
 
-export function SaveStateToFile(arg1:Array<number>):Promise<void>;
+export function SaveStateToFile():Promise<void>;
 
 export function SetBreakpoint(arg1:number):Promise<void>;
 

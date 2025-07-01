@@ -140,8 +140,18 @@
                         <span class="text-gray-500 mr-2">{formatAddress(memoryOffset + rowIdx * 16)}:</span>
                         <div class="flex-grow grid grid-cols-16">
                             {#each Array(16) as _, colIdx}
-                                {@const byte = memoryData[rowIdx * 16 + colIdx]}
-                                <span class="mr-1">{byte !== undefined ? formatByte(byte) : "--"}</span>
+                                <!-- Inside the Memory Viewer's #each loop for bytes -->
+{@const address = memoryOffset + rowIdx * 16 + colIdx}
+{@const byte = memoryData[rowIdx * 16 + colIdx]}
+<span
+    class="mr-1 cursor-pointer hover:bg-gray-600 rounded-sm px-px"
+    class:text-red-500={debugState.Breakpoints && debugState.Breakpoints[address]}
+    class:font-bold={debugState.Breakpoints && debugState.Breakpoints[address]}
+    on:click={() => toggleBreakpoint(address)}
+    title={formatAddress(address)}
+>
+    {byte !== undefined ? formatByte(byte) : "--"}
+</span>
                             {/each}
                         </div>
                     </div>

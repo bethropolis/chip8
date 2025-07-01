@@ -1,49 +1,31 @@
 <script>
-    import { onMount } from "svelte";
-    import { EventsOn } from "./wailsjs/runtime/runtime.js";
+    import { onMount } from 'svelte';
+    import { EventsOn, OnFileDrop } from './wailsjs/runtime/runtime.js';
     import {
         FrontendReady,
         GetInitialState,
-        StartDebugUpdates, // Import new functions
+        StartDebugUpdates,
         StopDebugUpdates,
+        LoadROMByPath,
+        TogglePause
     } from "./wailsjs/go/main/App.js";
-    import { settings, initializeSettings } from "./lib/stores.js";
+    import { settings, initializeSettings, showNotification } from "./lib/stores.js";
     import SettingsModal from "./lib/SettingsModal.svelte";
     import DebugPanel from "./lib/DebugPanel.svelte";
     import Notification from "./lib/Notification.svelte";
     import Header from "./lib/Header.svelte";
     import EmulatorView from "./lib/EmulatorView.svelte";
 
-    /**
-     * @typedef {Object} DebugState
-     * @property {number[]} Registers
-     * @property {any[]} Disassembly
-     * @property {number[]} Stack
-     * @property {Object} Breakpoints
-     * @property {number} PC
-     * @property {number} I
-     * @property {number} SP
-     * @property {number} DelayTimer
-     * @property {number} SoundTimer
-     */
-
-    /** @type {DebugState} */
-    let debugState = {
-        Registers: Array(16).fill(0),
-        Disassembly: [],
-        Stack: Array(16).fill(0),
-        Breakpoints: {},
-        PC: 0,
-        I: 0,
-        SP: 0,
-        DelayTimer: 0,
-        SoundTimer: 0,
-    };
-    let statusMessage = "Status: Idle | ROM: None";
+    let debugState = {};
     let showSettingsModal = false;
     let currentTab = "emulator";
 
-    // --- OPTIMIZATION: Reactive statement to control debug updates ---
+    // Reactive state for the status bar
+    let isPaused = true;
+    let romName = "None";
+    let clockSpeed = 700;
+    $: statusMessage = `Status: ${isPaused ? 'Paused' : 'Running'} | ROM: ${romName} | Speed: ${clockSpeed} Hz`;
+
     $: {
         if (currentTab === "debug") {
             StartDebugUpdates();
@@ -53,43 +35,74 @@
     }
 
     onMount(async () => {
-        // We can stop debug updates on initial mount, just in case.
         StopDebugUpdates();
 
+        // Single listener for debug state
         EventsOn("debugUpdate", (newState) => {
             debugState = newState;
         });
 
+        // Listen for status updates from Go
         EventsOn("statusUpdate", (newStatus) => {
-            statusMessage = newStatus;
+            const parts = newStatus.split("|");
+            if (parts.length > 1 && parts[1].includes("ROM:")) {
+                romName = parts[1].replace("ROM:", "").trim();
+            }
         });
 
-        await FrontendReady();
+        // Listen for pause state changes from Go
+        EventsOn("pauseUpdate", (pausedState) => {
+            isPaused = pausedState;
+        });
 
+        EventsOn("menu:pause", async () => {
+           isPaused = await TogglePause();
+        });
+
+        // Listen for clock speed updates from Go
+        EventsOn("clockSpeedUpdate", (speed) => {
+            clockSpeed = speed;
+        });
+
+        // Setup drag-and-drop
+        OnFileDrop((x, y, paths) => {
+            if (paths.length > 0) {
+                const fullPath = paths[0];
+                LoadROMByPath(fullPath).then((loadedRomName) => {
+                    romName = loadedRomName;
+                    isPaused = false;
+                    showNotification(`Loaded ${romName} via drop!`, 'success');
+                }).catch(err => {
+                    showNotification(`Failed to load dropped ROM: ${err}`, 'error');
+                });
+            }
+        }, false); // `false` makes the whole window a drop target
+
+        // Finalize startup
+        await FrontendReady();
         const initialState = await GetInitialState();
-        console.log("Initial state from backend:", initialState);
         if (initialState.cpuState) {
             debugState = initialState.cpuState;
         }
         if (initialState.settings) {
             initializeSettings(initialState.settings);
+            clockSpeed = initialState.settings.clockSpeed || 700;
         } else {
-            initializeSettings(null); // In case settings are not returned for some reason
+            initializeSettings(null);
         }
     });
 
-    /** Open the settings modal. */
     function openSettings() {
         showSettingsModal = true;
     }
-
 </script>
+
 <div
     class="flex flex-col h-screen bg-gray-800 text-gray-200 font-sans antialiased"
+    style="--wails-drop-target: drag;"
 >
     <Header bind:currentTab on:openSettings={openSettings} />
 
-    <!-- Main Content Area -->
     <main class="flex-grow overflow-hidden">
         {#if currentTab === "emulator"}
             <EmulatorView />
