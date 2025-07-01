@@ -73,8 +73,23 @@ jobs:
       - name: Build Wails application
         run: wails build -platform ${{ matrix.platform }} -tags webkit2_41
 
-      - name: Upload artifact
+      - name: Upload Linux artifact
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: build/bin/${{ matrix.artifact_name }}* # Adjust path based on your wails build output
+          path: build/bin/chip8-wails
+
+      - name: Upload Windows artifact
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: build/bin/chip8-wails.exe
+
+      - name: Upload macOS artifact
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: build/bin/chip8-wails.app
