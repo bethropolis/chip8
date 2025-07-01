@@ -4,23 +4,19 @@
 
     export let showModal;
 
-    // --- Tab State ---
     let activeTab = "appearance";
 
-    // --- FIX: Declare localSettings in the component's scope ---
     let localSettings = writable({});
 
     $: {
         if (showModal) {
-            // Create a deep copy of the settings from the store
-            // This prevents changes from affecting the global state until "Save" is clicked.
+            // Deep copy to prevent changes until Save is clicked
             localSettings.set(JSON.parse(JSON.stringify($settings)));
         }
     }
 
-    let remappingKey = null; // Stores the CHIP-8 key (a number, 0-15) being remapped
+    let remappingKey = null;
 
-    // --- Derived State for Keybinding View ---
     let keybindings = [];
     $: {
         if ($localSettings.keyMap) {
@@ -43,7 +39,7 @@
         closeModal();
     }
 
-    // --- Key Remapping Logic ---
+    // Key Remapping Logic
     function startRemap(event, chip8KeyToRemap) {
         remappingKey = chip8KeyToRemap;
         event.target.value = "Press key...";
@@ -88,9 +84,6 @@
     }
 </script>
 
-<!-- The HTML part of this component remains the same. -->
-<!-- It will now correctly bind to the `localSettings` object. -->
-
 {#if showModal}
     <div
         class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 transition-opacity"
@@ -102,7 +95,6 @@
                 Settings
             </h2>
             <div class="flex space-x-1">
-                <!-- Sidebar -->
                 <div class="w-1/4 bg-gray-900 p-3 rounded-l-md">
                     <nav class="space-y-1">
                         <button
@@ -138,7 +130,6 @@
                         >
                     </nav>
                 </div>
-                <!-- Content -->
                 <div class="w-3/4 bg-gray-800 p-4 rounded-r-md">
                     <div class="min-h-[300px]">
                         {#if activeTab === "appearance"}
@@ -322,7 +313,6 @@
                     </div>
                 </div>
             </div>
-            <!-- Action Buttons -->
             <div
                 class="flex justify-end gap-3 mt-4 border-t border-gray-700 pt-4"
             >

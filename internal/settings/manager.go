@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 )
 
-// Settings defines the user-configurable options for the emulator.
 type Settings struct {
 	ClockSpeed     int            `json:"clockSpeed"`
 	DisplayColor   string         `json:"displayColor"`
@@ -16,7 +15,9 @@ type Settings struct {
 	KeyMap         map[string]int `json:"keyMap"`
 }
 
-// DefaultSettings returns a new Settings object with default values.
+/*
+DefaultSettings returns a new Settings object with default values.
+*/
 func DefaultSettings() Settings {
 	return Settings{
 		ClockSpeed:     700,
@@ -31,23 +32,25 @@ func DefaultSettings() Settings {
 	}
 }
 
-// Manager handles the loading and saving of application settings.
 type Manager struct {
 	path string
 }
 
-// NewManager creates a new settings Manager.
+/*
+NewManager creates a new settings Manager.
+*/
 func NewManager(path string) *Manager {
 	return &Manager{path: path}
 }
 
-// Load reads settings from the file system. If the file doesn't exist,
-// it creates one with default settings.
+/*
+Load reads settings from the file system. If the file doesn't exist,
+it creates one with default settings.
+*/
 func (m *Manager) Load() (Settings, error) {
 	data, err := ioutil.ReadFile(m.path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// File doesn't exist, create it with defaults
 			s := DefaultSettings()
 			err := m.Save(s)
 			return s, err
@@ -57,7 +60,6 @@ func (m *Manager) Load() (Settings, error) {
 
 	var s Settings
 	if err := json.Unmarshal(data, &s); err != nil {
-		// Handle corrupted JSON by falling back to defaults
 		fmt.Printf("Warning: could not parse settings.json, falling back to defaults: %v\n", err)
 		return DefaultSettings(), nil
 	}
@@ -65,9 +67,10 @@ func (m *Manager) Load() (Settings, error) {
 	return s, nil
 }
 
-// Save writes the given settings to the file system.
+/*
+Save writes the given settings to the file system.
+*/
 func (m *Manager) Save(s Settings) error {
-	// Ensure the config directory exists
 	configDir := filepath.Dir(m.path)
 	if _, err := os.Stat(configDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(configDir, 0755); err != nil {

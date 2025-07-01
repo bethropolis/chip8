@@ -19,10 +19,8 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// NEW: Define a constant for our debug update frequency.
 const debugUpdateInterval = time.Millisecond * 100 // ~10Hz throttle (1000ms / 100ms = 10 updates/sec)
 
-// WailsInfo struct (no changes)
 type WailsInfo struct {
 	Info struct {
 		ProductName string `json:"productName"`
@@ -35,7 +33,6 @@ type WailsInfo struct {
 	} `json:"author"`
 }
 
-// App struct
 type App struct {
 	ctx                 context.Context
 	cpu                 *chip8.Chip8
@@ -51,10 +48,12 @@ type App struct {
 	settings            settings.Settings
 	settingsManager     *settings.Manager
 	romLoader           *roms.Loader
-	lastDebugUpdateTime time.Time // NEW: Field to track the last debug update time.
+	lastDebugUpdateTime time.Time
 }
 
-// NewApp (no changes)
+/*
+NewApp creates a new App instance, initializing configuration and dependencies.
+*/
 func NewApp() *App {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
@@ -73,16 +72,18 @@ func NewApp() *App {
 	}
 }
 
-// --- Core App Lifecycle and Handlers ---
-
 var frontendReadyOnce sync.Once
 
+// FrontendReady signals that the frontend is ready to receive events.
 func (a *App) FrontendReady() {
 	frontendReadyOnce.Do(func() {
 		close(a.frontendReady)
 	})
 }
 
+/*
+startup initializes the application context, loads settings, and starts the emulator loop.
+*/
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	loadedSettings, err := a.settingsManager.Load()
@@ -97,8 +98,9 @@ func (a *App) startup(ctx context.Context) {
 	go a.runEmulator()
 }
 
-// --- Main Emulator Loop (MODIFIED) ---
-
+/*
+runEmulator is the main loop for the emulator, handling CPU cycles, timers, and event emission.
+*/
 func (a *App) runEmulator() {
 	<-a.frontendReady
 	log.Println("Frontend is ready, starting emulation loop.")
@@ -122,7 +124,6 @@ func (a *App) runEmulator() {
 		case <-a.ctx.Done():
 			return
 		case <-cpuTicker.C:
-			// (CPU cycle logic is unchanged)
 			a.mu.RLock()
 			currentSpeed := a.settings.ClockSpeed
 			a.mu.RUnlock()
@@ -137,9 +138,7 @@ func (a *App) runEmulator() {
 			}
 
 		case <-timerTicker.C:
-			// --- MODIFIED: Throttling logic is implemented here ---
-			a.mu.Lock() // Use a full lock since we might write to lastDebugUpdateTime
-
+			a.mu.Lock()
 			isRunning := !a.isPaused
 			isDebugging := a.isDebugging
 			soundTimer := a.cpu.SoundTimer
@@ -152,14 +151,13 @@ func (a *App) runEmulator() {
 				}
 			}
 
-			// Check if we should send a debug update
 			if isDebugging && time.Since(a.lastDebugUpdateTime) >= debugUpdateInterval {
 				state := a.cpu.GetState()
 				a.lastDebugUpdateTime = time.Now()
-				a.mu.Unlock() // Unlock BEFORE emitting to avoid holding lock during I/O
+				a.mu.Unlock()
 				a.emit("debugUpdate", state)
 			} else {
-				a.mu.Unlock() // Always unlock if we're not emitting
+				a.mu.Unlock()
 			}
 
 			if drawFlag {
@@ -171,10 +169,9 @@ func (a *App) runEmulator() {
 	}
 }
 
-// --- The rest of the file remains the same ---
-// (I am including it for completeness as you requested)
-
-// SaveSettings now delegates to the manager and is concurrency-safe
+/*
+SaveSettings persists new settings and updates the emulator's configuration.
+*/
 func (a *App) SaveSettings(newSettings settings.Settings) error {
 	a.appendLog("Saving settings...")
 	a.mu.Lock()
@@ -189,7 +186,9 @@ func (a *App) SaveSettings(newSettings settings.Settings) error {
 	return nil
 }
 
-// GetInitialState is now concurrency-safe
+/*
+GetInitialState returns the current CPU state and settings for the frontend.
+*/
 func (a *App) GetInitialState() map[string]interface{} {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
@@ -200,6 +199,9 @@ func (a *App) GetInitialState() map[string]interface{} {
 	}
 }
 
+/*
+loadROMFromData loads a ROM into the emulator and updates state.
+*/
 func (a *App) loadROMFromData(data []byte, romName string) {
 	a.cpu.Reset()
 	if err := a.cpu.LoadROM(data); err != nil {
@@ -218,6 +220,9 @@ func (a *App) loadROMFromData(data []byte, romName string) {
 	a.emit("pauseUpdate", false)
 }
 
+/*
+LoadROMFromFile opens a file dialog for the user to select a ROM file and loads it.
+*/
 func (a *App) LoadROMFromFile() (string, error) {
 	selection, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title:   "Load CHIP-8 ROM",
@@ -229,6 +234,9 @@ func (a *App) LoadROMFromFile() (string, error) {
 	return a.LoadROMByPath(selection)
 }
 
+/*
+LoadROMByPath loads a ROM from a given file path.
+*/
 func (a *App) LoadROMByPath(path string) (string, error) {
 	a.appendLog(fmt.Sprintf("Attempting to load ROM from path: %s", path))
 	data, err := a.romLoader.LoadFromPath(path)
@@ -241,6 +249,9 @@ func (a *App) LoadROMByPath(path string) (string, error) {
 	return romName, nil
 }
 
+/*
+LoadROM loads a ROM by name from the ROMs directory.
+*/
 func (a *App) LoadROM(romName string) error {
 	a.appendLog(fmt.Sprintf("Attempting to load ROM from browser: %s", romName))
 	data, err := a.romLoader.LoadFromDir(romName)
@@ -252,10 +263,16 @@ func (a *App) LoadROM(romName string) error {
 	return nil
 }
 
+/*
+GetROMs returns a list of available ROMs.
+*/
 func (a *App) GetROMs() ([]string, error) {
 	return a.romLoader.List()
 }
 
+/*
+SoftReset reloads the currently loaded ROM, if any.
+*/
 func (a *App) SoftReset() error {
 	a.mu.RLock()
 	romToLoad := a.romLoaded
@@ -268,6 +285,9 @@ func (a *App) SoftReset() error {
 	return nil
 }
 
+/*
+HardReset resets the emulator state and clears the loaded ROM.
+*/
 func (a *App) HardReset() {
 	a.mu.Lock()
 	a.isPaused = true
@@ -282,6 +302,9 @@ func (a *App) HardReset() {
 	a.emit("debugUpdate", a.cpu.GetState())
 }
 
+/*
+TogglePause toggles the paused state of the emulator.
+*/
 func (a *App) TogglePause() bool {
 	a.mu.Lock()
 	a.isPaused = !a.isPaused
@@ -297,6 +320,9 @@ func (a *App) TogglePause() bool {
 	return isPausedNow
 }
 
+/*
+GetMemory returns a base64-encoded slice of memory from the emulator.
+*/
 func (a *App) GetMemory(offset, limit int) string {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
@@ -310,9 +336,13 @@ func (a *App) GetMemory(offset, limit int) string {
 	return base64.StdEncoding.EncodeToString(a.cpu.Memory[offset : offset+limit])
 }
 
+/*
+SetClockSpeed updates the emulator's clock speed.
+*/
 func (a *App) SetClockSpeed(speed int) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+
 	a.setClockSpeedInternal(speed)
 }
 
@@ -327,6 +357,9 @@ func (a *App) setClockSpeedInternal(speed int) {
 	}
 }
 
+/*
+emit sends an event to the frontend if the context is available.
+*/
 func (a *App) emit(eventName string, data ...interface{}) {
 	if a.ctx == nil {
 		return
@@ -334,6 +367,9 @@ func (a *App) emit(eventName string, data ...interface{}) {
 	runtime.EventsEmit(a.ctx, eventName, data...)
 }
 
+/*
+appendLog adds a message to the log buffer and prints it.
+*/
 func (a *App) appendLog(msg string) {
 	a.logMutex.Lock()
 	defer a.logMutex.Unlock()
@@ -344,6 +380,9 @@ func (a *App) appendLog(msg string) {
 	a.logBuffer = append(a.logBuffer, time.Now().Format("15:04:05")+" | "+msg)
 }
 
+/*
+GetLogs returns a copy of the current log buffer.
+*/
 func (a *App) GetLogs() []string {
 	a.logMutex.Lock()
 	defer a.logMutex.Unlock()
@@ -352,22 +391,37 @@ func (a *App) GetLogs() []string {
 	return logsCopy
 }
 
+/*
+KeyDown sets the specified key as pressed.
+*/
 func (a *App) KeyDown(key int) {
 	if key >= 0 && key < 16 {
 		a.cpu.Keys[key] = true
 	}
 }
+
+/*
+KeyUp sets the specified key as released.
+*/
 func (a *App) KeyUp(key int) {
 	if key >= 0 && key < 16 {
 		a.cpu.Keys[key] = false
 	}
 }
+
+/*
+StartDebugUpdates enables debug state updates.
+*/
 func (a *App) StartDebugUpdates() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.isDebugging = true
 	a.appendLog("Debug view activated.")
 }
+
+/*
+StopDebugUpdates disables debug state updates.
+*/
 func (a *App) StopDebugUpdates() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -375,6 +429,9 @@ func (a *App) StopDebugUpdates() {
 	a.appendLog("Debug view deactivated.")
 }
 
+/*
+LoadStateFromFile loads a saved emulator state from a file.
+*/
 func (a *App) LoadStateFromFile() error {
 	selection, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title:   "Load CHIP-8 State",
@@ -403,6 +460,9 @@ func (a *App) LoadStateFromFile() error {
 	return nil
 }
 
+/*
+SaveStateToFile saves the current emulator state to a file.
+*/
 func (a *App) SaveStateToFile() error {
 	a.mu.Lock()
 	a.isPaused = true
@@ -427,6 +487,10 @@ func (a *App) SaveStateToFile() error {
 	a.appendLog(fmt.Sprintf("State saved to: %s", selection))
 	return nil
 }
+
+/*
+SetBreakpoint sets a breakpoint at the given address.
+*/
 func (a *App) SetBreakpoint(address uint16) {
 	if a.cpu != nil {
 		a.mu.Lock()
@@ -435,6 +499,10 @@ func (a *App) SetBreakpoint(address uint16) {
 		a.appendLog(fmt.Sprintf("Breakpoint set at 0x%04X", address))
 	}
 }
+
+/*
+ClearBreakpoint removes a breakpoint at the given address.
+*/
 func (a *App) ClearBreakpoint(address uint16) {
 	if a.cpu != nil {
 		a.mu.Lock()
@@ -443,6 +511,10 @@ func (a *App) ClearBreakpoint(address uint16) {
 		a.appendLog(fmt.Sprintf("Breakpoint cleared at 0x%04X", address))
 	}
 }
+
+/*
+ShowAboutDialog displays an about dialog with application information.
+*/
 func (a *App) ShowAboutDialog() {
 	if a.ctx == nil {
 		return
@@ -464,12 +536,20 @@ Developed by: %s`,
 		Message: message,
 	})
 }
+
+/*
+OpenGitHubLink opens the project's GitHub URL in the browser.
+*/
 func (a *App) OpenGitHubLink() {
 	if a.ctx == nil || a.wailsInfo.Info.ProjectURL == "" {
 		return
 	}
 	runtime.BrowserOpenURL(a.ctx, a.wailsInfo.Info.ProjectURL)
 }
+
+/*
+SaveScreenshot saves a base64-encoded PNG screenshot to a file.
+*/
 func (a *App) SaveScreenshot(data string) error {
 	dec, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {

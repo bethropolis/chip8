@@ -4,6 +4,7 @@
 
     let timeout;
 
+    // Dismiss the notification and clear the timeout
     function dismiss() {
         clearTimeout(timeout);
         notification.set({ ...$notification, show: false });

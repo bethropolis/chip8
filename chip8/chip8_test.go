@@ -4,6 +4,10 @@ import (
 	"testing"
 )
 
+/*
+TestNewChip8 verifies that a new Chip8 instance is initialized correctly,
+including registers, program counter, stack pointer, and font set.
+*/
 func TestNewChip8(t *testing.T) {
 	c := New()
 
@@ -17,7 +21,6 @@ func TestNewChip8(t *testing.T) {
 		t.Errorf("Expected SP to be 0, got %d", c.SP)
 	}
 
-	// Check if font set is loaded
 	for i := 0; i < len(FontSet); i++ {
 		if c.Memory[FontSetStart+i] != FontSet[i] {
 			t.Errorf("FontSet not loaded correctly at 0x%X", FontSetStart+i)
@@ -25,6 +28,10 @@ func TestNewChip8(t *testing.T) {
 	}
 }
 
+/*
+TestLoadROM checks that loading a ROM places its bytes in the correct memory locations,
+and that an error is returned if the ROM is too large.
+*/
 func TestLoadROM(t *testing.T) {
 	c := New()
 	romData := []byte{0x12, 0x34, 0x56, 0x78}
@@ -40,7 +47,6 @@ func TestLoadROM(t *testing.T) {
 		}
 	}
 
-	// Test ROM too large
 	largeROM := make([]byte, 4096-ProgramStart+1)
 	err = c.LoadROM(largeROM)
 	if err == nil {
@@ -48,9 +54,12 @@ func TestLoadROM(t *testing.T) {
 	}
 }
 
+/*
+TestOpcode00E0 verifies that the CLS opcode clears the display and sets the draw flag.
+*/
 func TestOpcode00E0(t *testing.T) {
 	c := New()
-	c.Display[0] = 1 // Set a pixel
+	c.Display[0] = 1
 	c.PC = ProgramStart
 	c.Memory[ProgramStart] = 0x00
 	c.Memory[ProgramStart+1] = 0xE0
@@ -68,13 +77,14 @@ func TestOpcode00E0(t *testing.T) {
 	}
 }
 
+/*
+TestOpcode00EE checks that the RET opcode pops the stack and sets the PC correctly.
+*/
 func TestOpcode00EE(t *testing.T) {
 	c := New()
-	// In a real CALL, the PC would already be incremented.
-	// So we push the return address, e.g., 0x300
 	c.Stack[0] = 0x300
 	c.SP = 1
-	c.PC = ProgramStart // The subroutine is at 0x200
+	c.PC = ProgramStart
 	c.Memory[ProgramStart] = 0x00
 	c.Memory[ProgramStart+1] = 0xEE
 
@@ -83,13 +93,14 @@ func TestOpcode00EE(t *testing.T) {
 	if c.SP != 0 {
 		t.Errorf("Expected SP to be 0, got %d", c.SP)
 	}
-	// After RET, PC should be exactly the address on the stack.
-	// The next cycle's PC+=2 will then execute the next instruction.
 	if c.PC != 0x300 {
 		t.Errorf("Expected PC to be 0x%X, got 0x%X", 0x300, c.PC)
 	}
 }
 
+/*
+TestOpcode1NNN checks that the JP opcode sets the PC to the correct address.
+*/
 func TestOpcode1NNN(t *testing.T) {
 	c := New()
 	c.PC = ProgramStart
@@ -103,11 +114,14 @@ func TestOpcode1NNN(t *testing.T) {
 	}
 }
 
+/*
+TestOpcode6XNN checks that the LD Vx, byte opcode sets the register correctly.
+*/
 func TestOpcode6XNN(t *testing.T) {
 	c := New()
 	c.PC = ProgramStart
 	c.Memory[ProgramStart] = 0x6A
-	c.Memory[ProgramStart+1] = 0x55 // Set V[A] to 0x55
+	c.Memory[ProgramStart+1] = 0x55
 
 	c.EmulateCycle()
 
@@ -119,12 +133,15 @@ func TestOpcode6XNN(t *testing.T) {
 	}
 }
 
+/*
+TestOpcode7XNN checks that the ADD Vx, byte opcode adds the value to the register.
+*/
 func TestOpcode7XNN(t *testing.T) {
 	c := New()
-	c.Registers[0xB] = 0x10 // Set V[B] to 0x10
+	c.Registers[0xB] = 0x10
 	c.PC = ProgramStart
 	c.Memory[ProgramStart] = 0x7B
-	c.Memory[ProgramStart+1] = 0x05 // Add 0x05 to V[B]
+	c.Memory[ProgramStart+1] = 0x05
 
 	c.EmulateCycle()
 
@@ -136,11 +153,14 @@ func TestOpcode7XNN(t *testing.T) {
 	}
 }
 
+/*
+TestOpcodeANNN checks that the LD I, addr opcode sets the I register correctly.
+*/
 func TestOpcodeANNN(t *testing.T) {
 	c := New()
 	c.PC = ProgramStart
 	c.Memory[ProgramStart] = 0xA1
-	c.Memory[ProgramStart+1] = 0x23 // Set I to 0x123
+	c.Memory[ProgramStart+1] = 0x23
 
 	c.EmulateCycle()
 
@@ -152,14 +172,18 @@ func TestOpcodeANNN(t *testing.T) {
 	}
 }
 
+/*
+TestOpcodeDXYN checks that the DRW Vx, Vy, nibble opcode draws the sprite,
+sets the draw flag, and detects pixel collisions (setting VF).
+*/
 func TestOpcodeDXYN(t *testing.T) {
 	c := New()
-	c.Registers[0x0] = 0   // VX = 0
-	c.Registers[0x1] = 0   // VY = 0
-	c.I = FontSetStart     // Point I to a font character (e.g., '0')
+	c.Registers[0x0] = 0
+	c.Registers[0x1] = 0
+	c.I = FontSetStart
 	c.PC = ProgramStart
 	c.Memory[ProgramStart] = 0xD0
-	c.Memory[ProgramStart+1] = 0x15 // Draw sprite at (V0, V1), height 5
+	c.Memory[ProgramStart+1] = 0x15
 
 	c.EmulateCycle()
 
@@ -170,22 +194,17 @@ func TestOpcodeDXYN(t *testing.T) {
 		t.Errorf("Expected PC to be 0x%X, got 0x%X", ProgramStart+2, c.PC)
 	}
 
-	// Check a few pixels that should be set for font '0'
-	// Font '0': 0xF0, 0x90, 0x90, 0x90, 0xF0
-	// (0,0) should be set (first bit of 0xF0)
 	if c.Display[0] != 1 {
 		t.Errorf("Expected pixel (0,0) to be 1, got %d", c.Display[0])
 	}
 
-	// (0,1) should be set (first bit of 0x90, second row)
 	if c.Display[1*DisplayWidth+0] != 1 {
 		t.Errorf("Expected pixel (0,1) to be 1, got %d", c.Display[1*DisplayWidth+0])
 	}
 
-	// Test collision (VF should be set)
-	c.Registers[0xF] = 0 // Clear VF
+	c.Registers[0xF] = 0
 	c.PC = ProgramStart
-	c.EmulateCycle() // Draw again, causing collision
+	c.EmulateCycle()
 
 	if c.Registers[0xF] != 1 {
 		t.Errorf("Expected VF to be 1 after collision, got %d", c.Registers[0xF])

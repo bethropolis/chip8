@@ -20,7 +20,6 @@
     let showSettingsModal = false;
     let currentTab = "emulator";
 
-    // Reactive state for the status bar
     let isPaused = true;
     let romName = "None";
     let clockSpeed = 700;
@@ -37,12 +36,10 @@
     onMount(async () => {
         StopDebugUpdates();
 
-        // Single listener for debug state
         EventsOn("debugUpdate", (newState) => {
             debugState = newState;
         });
 
-        // Listen for status updates from Go
         EventsOn("statusUpdate", (newStatus) => {
             const parts = newStatus.split("|");
             if (parts.length > 1 && parts[1].includes("ROM:")) {
@@ -50,7 +47,6 @@
             }
         });
 
-        // Listen for pause state changes from Go
         EventsOn("pauseUpdate", (pausedState) => {
             isPaused = pausedState;
         });
@@ -59,12 +55,10 @@
            isPaused = await TogglePause();
         });
 
-        // Listen for clock speed updates from Go
         EventsOn("clockSpeedUpdate", (speed) => {
             clockSpeed = speed;
         });
 
-        // Setup drag-and-drop
         OnFileDrop((x, y, paths) => {
             if (paths.length > 0) {
                 const fullPath = paths[0];
@@ -76,9 +70,8 @@
                     showNotification(`Failed to load dropped ROM: ${err}`, 'error');
                 });
             }
-        }, false); // `false` makes the whole window a drop target
+        }, false);
 
-        // Finalize startup
         await FrontendReady();
         const initialState = await GetInitialState();
         if (initialState.cpuState) {

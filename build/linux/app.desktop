@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=chip8-wails
+Exec=chip8-wails
+Icon=appicon
+Type=Application
+Categories=Game;

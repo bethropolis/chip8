@@ -7,6 +7,7 @@
     let roms = [];
     let selectedROM = '';
 
+    // Fetch the list of available ROMs from the backend
     async function fetchROMs() {
         try {
             const result = await GetROMs();
@@ -22,6 +23,7 @@
         }
     }
 
+    // Load the selected ROM and notify the user of the result
     async function handleLoadSelectedROM() {
         if (selectedROM) {
             try {

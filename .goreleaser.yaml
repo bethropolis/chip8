@@ -1,0 +1,15 @@
+project_name: chip8-wails
+builds:
+  - id: wails
+    main: ./main.go
+    goos: [linux, windows, darwin]
+    goarch: [amd64]
+nfpms:
+  - id: linuxpkgs
+    formats: [deb, rpm]
+    maintainer: "bethropolis@outlook.com"
+    bindir: /usr/bin
+release:
+  github:
+    owner: bethropolis
+    name: chip8

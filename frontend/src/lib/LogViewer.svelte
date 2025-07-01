@@ -8,7 +8,6 @@
 
     async function fetchLogs() {
         logs = await GetLogs();
-        // Scroll to bottom on new logs
         if (logViewerElement) {
             logViewerElement.scrollTop = logViewerElement.scrollHeight;
         }
@@ -31,5 +30,4 @@
 </div>
 
 <style>
-    /* Add any specific styles for the log viewer here */
 </style>

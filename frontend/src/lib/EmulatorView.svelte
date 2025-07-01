@@ -28,7 +28,6 @@
     const dispatch = createEventDispatcher();
 
 
-    // --- State from the store ---
     $: keyMap = $settings.keyMap;
     $: currentDisplayColor = $settings.displayColor;
     $: currentScanlineEffect = $settings.scanlineEffect;
@@ -214,7 +213,7 @@
     /** Save emulator state to file. */
     async function handleSaveState() {
         try {
-            await SaveStateToFile(); // No more two-step process
+            await SaveStateToFile();
             showNotification("Emulator state saved!", "success");
         } catch (error) {
             showNotification(`Failed to save state: ${error}`, "error");

@@ -39,12 +39,10 @@
     class="flex-none bg-gray-900 text-gray-200 shadow-md z-20 flex items-center justify-between pr-2"
 >
     <div class="flex items-center">
-        <!-- App Icon and Title -->
         <div class="p-2 flex items-center space-x-2">
             <img src={appIcon} alt="App Icon" class="h-5 w-5" />
             <h1 class="text-md font-semibold text-gray-300">CHIP-8 Emulator</h1>
         </div>
-        <!-- Tabs -->
         <nav class="flex space-x-1">
             <button
                 on:click={() => (currentTab = "emulator")}
@@ -69,7 +67,6 @@
         </nav>
     </div>
 
-    <!-- Window Controls -->
     <div class="flex items-center space-x-1">
         <button
             on:click={openSettings}

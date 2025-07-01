@@ -64,7 +64,7 @@
 </script>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 p-3 h-full overflow-y-auto bg-gray-900 text-gray-300 font-sans">
-    
+
     <!-- Left Column -->
     <div class="lg:col-span-1 flex flex-col space-y-3">
         <!-- CPU State -->
@@ -140,7 +140,6 @@
                         <span class="text-gray-500 mr-2">{formatAddress(memoryOffset + rowIdx * 16)}:</span>
                         <div class="flex-grow grid grid-cols-16">
                             {#each Array(16) as _, colIdx}
-                                <!-- Inside the Memory Viewer's #each loop for bytes -->
 {@const address = memoryOffset + rowIdx * 16 + colIdx}
 {@const byte = memoryData[rowIdx * 16 + colIdx]}
 <span
