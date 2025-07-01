@@ -30,6 +30,8 @@ export function showNotification(message, type = "info", duration = 3000) {
  *   clockSpeed: number,
  *   displayColor: string,
  *   scanlineEffect: boolean,
+ *   pixelScale: number,
+ *   romsPath: string,
  *   keyMap: Record<string|number, number>
  * }}
  */
@@ -37,6 +39,8 @@ const defaultSettings = {
   clockSpeed: 700,
   displayColor: "#33FF00",
   scanlineEffect: false,
+  pixelScale: 10,
+  romsPath: "./roms",
   keyMap: {
     1: 0x1,
     2: 0x2,
@@ -101,6 +105,16 @@ export function initializeSettings(initialSettings) {
           ...currentSettings.keyMap,
           ...initialSettings.keyMap,
         };
+      }
+      // Ensure pixelScale and romsPath have defaults if missing
+      if (
+        !("pixelScale" in mergedSettings) ||
+        mergedSettings.pixelScale === undefined
+      ) {
+        mergedSettings.pixelScale = 10;
+      }
+      if (!("romsPath" in mergedSettings) || !mergedSettings.romsPath) {
+        mergedSettings.romsPath = "./roms";
       }
     }
     return mergedSettings;

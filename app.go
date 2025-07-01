@@ -20,7 +20,6 @@ import (
 )
 
 const debugUpdateInterval = time.Millisecond * 100 // ~10Hz throttle (1000ms / 100ms = 10 updates/sec)
-
 type WailsInfo struct {
 	Info struct {
 		ProductName string `json:"productName"`
@@ -32,7 +31,6 @@ type WailsInfo struct {
 		Name string `json:"name"`
 	} `json:"author"`
 }
-
 type App struct {
 	ctx                 context.Context
 	cpu                 *chip8.Chip8
@@ -68,57 +66,47 @@ func NewApp() *App {
 		logBuffer:       make([]string, 0, 100),
 		isPaused:        true,
 		settingsManager: settings.NewManager(settingsPath),
-		romLoader:       roms.NewLoader("./roms"),
 	}
 }
 
 var frontendReadyOnce sync.Once
-
-// FrontendReady signals that the frontend is ready to receive events.
 func (a *App) FrontendReady() {
 	frontendReadyOnce.Do(func() {
 		close(a.frontendReady)
 	})
 }
 
-/*
-startup initializes the application context, loads settings, and starts the emulator loop.
-*/
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	loadedSettings, err := a.settingsManager.Load()
 	if err != nil {
 		log.Fatalf("FATAL: Could not load or create settings: %v", err)
 	}
+
 	a.mu.Lock()
 	a.settings = loadedSettings
+	a.romLoader = roms.NewLoader(loadedSettings.RomsPath)
 	a.mu.Unlock()
+
 	a.appendLog("Settings loaded successfully.")
 	a.SetClockSpeed(loadedSettings.ClockSpeed)
 	go a.runEmulator()
 }
 
-/*
-runEmulator is the main loop for the emulator, handling CPU cycles, timers, and event emission.
-*/
 func (a *App) runEmulator() {
 	<-a.frontendReady
 	log.Println("Frontend is ready, starting emulation loop.")
-
 	a.mu.RLock()
 	speed := a.settings.ClockSpeed
 	a.mu.RUnlock()
-
 	if speed <= 0 {
 		speed = 700
 		a.appendLog(fmt.Sprintf("Warning: Invalid clock speed detected, falling back to %d Hz", speed))
 	}
-
 	cpuTicker := time.NewTicker(time.Second / time.Duration(speed))
 	timerTicker := time.NewTicker(time.Second / 60)
 	defer cpuTicker.Stop()
 	defer timerTicker.Stop()
-
 	for {
 		select {
 		case <-a.ctx.Done():
@@ -136,21 +124,18 @@ func (a *App) runEmulator() {
 			if isRunning {
 				a.cpu.EmulateCycle()
 			}
-
 		case <-timerTicker.C:
 			a.mu.Lock()
 			isRunning := !a.isPaused
 			isDebugging := a.isDebugging
 			soundTimer := a.cpu.SoundTimer
 			drawFlag := a.cpu.DrawFlag
-
 			if isRunning {
 				a.cpu.UpdateTimers()
 				if soundTimer > 0 {
 					a.emit("playBeep")
 				}
 			}
-
 			if isDebugging && time.Since(a.lastDebugUpdateTime) >= debugUpdateInterval {
 				state := a.cpu.GetState()
 				a.lastDebugUpdateTime = time.Now()
@@ -159,7 +144,6 @@ func (a *App) runEmulator() {
 			} else {
 				a.mu.Unlock()
 			}
-
 			if drawFlag {
 				displayData := base64.StdEncoding.EncodeToString(a.cpu.Display[:])
 				a.emit("displayUpdate", displayData)
@@ -169,13 +153,27 @@ func (a *App) runEmulator() {
 	}
 }
 
-/*
-SaveSettings persists new settings and updates the emulator's configuration.
-*/
+func (a *App) SelectRomsDirectory() (string, error) {
+	selection, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select ROMs Directory",
+	})
+	if err != nil {
+		return "", err
+	}
+	return selection, nil
+}
+
 func (a *App) SaveSettings(newSettings settings.Settings) error {
 	a.appendLog("Saving settings...")
 	a.mu.Lock()
 	defer a.mu.Unlock()
+
+	if a.settings.RomsPath != newSettings.RomsPath {
+		a.appendLog(fmt.Sprintf("ROMs path changed to: %s", newSettings.RomsPath))
+		a.romLoader = roms.NewLoader(newSettings.RomsPath)
+		a.emit("roms:path-changed")
+	}
+
 	if err := a.settingsManager.Save(newSettings); err != nil {
 		a.appendLog(fmt.Sprintf("Failed to write settings file: %v", err))
 		return err

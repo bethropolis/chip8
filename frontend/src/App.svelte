@@ -16,15 +16,24 @@
     import Header from "./lib/Header.svelte";
     import EmulatorView from "./lib/EmulatorView.svelte";
 
+    /** @type {object} Holds the current debug state for the debug panel. */
     let debugState = {};
+    /** @type {boolean} Controls visibility of the settings modal. */
     let showSettingsModal = false;
+    /** @type {"emulator"|"debug"} The currently selected tab. */
     let currentTab = "emulator";
 
+    /** @type {boolean} Whether the emulator is paused. */
     let isPaused = true;
+    /** @type {string} The name of the currently loaded ROM. */
     let romName = "None";
+    /** @type {number} The current clock speed in Hz. */
     let clockSpeed = 700;
+
+    /** @type {string} Status message displayed in the footer. */
     $: statusMessage = `Status: ${isPaused ? 'Paused' : 'Running'} | ROM: ${romName} | Speed: ${clockSpeed} Hz`;
 
+    // Start or stop debug updates based on the current tab.
     $: {
         if (currentTab === "debug") {
             StartDebugUpdates();
@@ -33,6 +42,11 @@
         }
     }
 
+    /**
+     * Handles initialization and event subscriptions on component mount.
+     * Sets up listeners for debug, status, pause, menu, and clock speed updates.
+     * Handles file drop for loading ROMs.
+     */
     onMount(async () => {
         StopDebugUpdates();
 
@@ -59,6 +73,12 @@
             clockSpeed = speed;
         });
 
+        /**
+         * Handles file drop events for loading ROMs.
+         * @param {number} x - X coordinate of drop.
+         * @param {number} y - Y coordinate of drop.
+         * @param {string[]} paths - Array of file paths dropped.
+         */
         OnFileDrop((x, y, paths) => {
             if (paths.length > 0) {
                 const fullPath = paths[0];
@@ -85,6 +105,9 @@
         }
     });
 
+    /**
+     * Opens the settings modal.
+     */
     function openSettings() {
         showSettingsModal = true;
     }
