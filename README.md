@@ -1,3 +1,5 @@
+[![CHIP-8 Emulator Logo](./.githubasserts/chip8_logo.svg)](https://github.com/bethropolis/chip8)
+
 # CHIP-8 Emulator
 
 [![Build Status](https://github.com/bethropolis/chip8/actions/workflows/test-build.yml/badge.svg)](https://github.com/bethropolis/chip8/actions/workflows/test-build.yml) [![Go Version](https://img.shields.io/badge/Go-1.22-00ADD8?logo=go&logoColor=white)](https://go.dev/) [![Wails Version](https://img.shields.io/badge/Wails-v2-blueviolet?logo=wails&logoColor=white)](https://wails.io/) [![License](https://img.shields.io/github/license/bethropolis/chip8)](https://github.com/bethropolis/chip8/blob/main/LICENSE)
@@ -89,12 +91,6 @@ cd frontend
 bun run build
 ```
 
-## Troubleshooting
 
-If you encounter issues, try cleaning the build artifacts and regenerating Wails bindings:
-
-```bash
-cd chip8
-rm -rf frontend/node_modules frontend/dist frontend/src/wailsjs
-wails dev
-```
+# LICENSE
+The project is licensed under the [MIT License](LICENSE).

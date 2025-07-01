@@ -1,0 +1,120 @@
+<svg viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradient for the main text -->
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ff88;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#00cc66;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00aa44;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gradient for the screen -->
+    <linearGradient id="screenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d0d0d;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Pixelated pattern for screen -->
+    <pattern id="pixelPattern" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
+      <rect width="4" height="4" fill="#0d0d0d"/>
+      <rect width="3" height="3" fill="#1a1a1a"/>
+    </pattern>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="120" fill="#000000" rx="8"/>
+  
+  <!-- Retro computer/console body -->
+  <rect x="20" y="25" width="80" height="50" fill="#2a2a2a" rx="4" stroke="#444" stroke-width="1"/>
+  
+  <!-- Screen bezel -->
+  <rect x="25" y="30" width="50" height="30" fill="#1a1a1a" rx="2"/>
+  
+  <!-- Screen with pixel pattern -->
+  <rect x="27" y="32" width="46" height="26" fill="url(#pixelPattern)" rx="1"/>
+  
+  <!-- Screen content - classic CHIP-8 style pixels -->
+  <g fill="#00ff88" opacity="0.9">
+    <!-- Simple pixelated "8" pattern on screen -->
+    <rect x="30" y="35" width="2" height="2"/>
+    <rect x="32" y="35" width="2" height="2"/>
+    <rect x="34" y="35" width="2" height="2"/>
+    <rect x="36" y="35" width="2" height="2"/>
+    <rect x="38" y="35" width="2" height="2"/>
+    
+    <rect x="30" y="37" width="2" height="2"/>
+    <rect x="38" y="37" width="2" height="2"/>
+    
+    <rect x="30" y="39" width="2" height="2"/>
+    <rect x="32" y="39" width="2" height="2"/>
+    <rect x="34" y="39" width="2" height="2"/>
+    <rect x="36" y="39" width="2" height="2"/>
+    <rect x="38" y="39" width="2" height="2"/>
+    
+    <rect x="30" y="41" width="2" height="2"/>
+    <rect x="38" y="41" width="2" height="2"/>
+    
+    <rect x="30" y="43" width="2" height="2"/>
+    <rect x="32" y="43" width="2" height="2"/>
+    <rect x="34" y="43" width="2" height="2"/>
+    <rect x="36" y="43" width="2" height="2"/>
+    <rect x="38" y="43" width="2" height="2"/>
+    
+    <!-- Additional scattered pixels for retro effect -->
+    <rect x="42" y="37" width="2" height="2"/>
+    <rect x="44" y="41" width="2" height="2"/>
+    <rect x="46" y="35" width="2" height="2"/>
+    <rect x="48" y="43" width="2" height="2"/>
+  </g>
+  
+  <!-- Screen glow effect -->
+  <rect x="27" y="32" width="46" height="26" fill="none" stroke="#00ff88" stroke-width="0.5" opacity="0.3" rx="1" filter="url(#glow)"/>
+  
+  <!-- Control buttons -->
+  <circle cx="82" cy="40" r="3" fill="#333" stroke="#555" stroke-width="1"/>
+  <circle cx="82" cy="50" r="3" fill="#333" stroke="#555" stroke-width="1"/>
+  <circle cx="82" cy="60" r="3" fill="#333" stroke="#555" stroke-width="1"/>
+  
+  <!-- Main text "CHIP-8" -->
+  <text x="120" y="50" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="url(#textGradient)" filter="url(#glow)">CHIP-8</text>
+  
+  <!-- Subtitle "EMULATOR" -->
+  <text x="122" y="68" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#888" letter-spacing="2px">EMULATOR</text>
+  
+  <!-- Binary pattern decoration -->
+  <g fill="#00ff88" opacity="0.2" font-family="monospace" font-size="10">
+    <text x="300" y="20">1010110011</text>
+    <text x="300" y="35">0110011010</text>
+    <text x="300" y="50">1100101101</text>
+    <text x="300" y="65">0101110010</text>
+    <text x="300" y="80">1001011100</text>
+    <text x="300" y="95">0110101001</text>
+  </g>
+  
+  <!-- Decorative circuit lines -->
+  <g stroke="#00ff88" stroke-width="1" fill="none" opacity="0.3">
+    <line x1="280" y1="30" x2="295" y2="30"/>
+    <line x1="295" y1="30" x2="295" y2="45"/>
+    <line x1="295" y1="45" x2="285" y2="45"/>
+    <circle cx="285" cy="45" r="2" fill="#00ff88"/>
+    
+    <line x1="280" y1="60" x2="290" y2="60"/>
+    <line x1="290" y1="60" x2="290" y2="75"/>
+    <line x1="290" y1="75" x2="300" y2="75"/>
+    <circle cx="300" cy="75" r="2" fill="#00ff88"/>
+  </g>
+  
+  <!-- Power LED indicator -->
+  <circle cx="380" cy="20" r="3" fill="#ff4444" opacity="0.8">
+    <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <text x="365" y="18" font-family="Arial, sans-serif" font-size="8" fill="#666">PWR</text>
+</svg>
