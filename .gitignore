@@ -2,8 +2,10 @@ build/bin
 node_modules
 frontend/dist
 frontend/src/wailsjs/
-artifacts/
 *.ch8
 guide/
 GEMINI.md
 codebase.md
+
+dist/
+artifacts/
