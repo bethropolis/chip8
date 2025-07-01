@@ -1,15 +1,99 @@
+# .goreleaser.yaml
 project_name: chip8-wails
+
+# This `before` hook runs before the build process.
+# We use it to install our frontend dependencies.
+before:
+  hooks:
+    - bun install --cwd ./frontend
+
 builds:
-  - id: wails
-    main: .
-    goos: [linux, windows, darwin]
-    goarch: [amd64]
+  - id: chip8-wails
+    # Tell GoReleaser to use the `wails build` command instead of the default `go build`.
+    # The template variables {{.Os}}, {{.Arch}}, {{.Version}} are provided by GoReleaser.
+    builder: custom
+    build_cmd: wails build -clean -platform {{.Os}}/{{.Arch}} -ldflags="-s -w -X main.version={{.Version}}" -o {{.Path}}
+
+    # Environment variables required for Wails builds, especially cross-compilation.
+    env:
+      - CGO_ENABLED=1
+
+    # Define the platforms we want to build for.
+    # GoReleaser will cross-compile from the single Ubuntu runner.
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      # Windows and Linux don't have arm64 builds in this config.
+      - goos: windows
+        goarch: arm64
+      - goos: linux
+        goarch: arm64
+    # The main binary name for each OS.
+    binary: '{{ .ProjectName }}'
+
+# This section creates .zip and .tar.gz archives for your binaries.
+archives:
+  - format: tar.gz
+    # This replacement makes the filename friendlier, e.g., "chip8-wails_Linux_x86_64"
+    name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}'
+    goos:
+      - linux
+    files:
+      - LICENSE
+      - README.md
+
+  - format: zip
+    name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}'
+    goos:
+      - windows
+      - darwin
+    files:
+      - LICENSE
+      - README.md
+
+# This section creates Linux packages (.deb, .rpm).
 nfpms:
-  - id: linuxpkgs
-    formats: [deb, rpm]
-    maintainer: "your_email@example.com"
-    bindir: /usr/bin
+  - id: linux-packages
+    maintainer: "bethropolis@outlook.com"
+    description: "A CHIP-8 emulator built with Wails."
+    homepage: "https://github.com/bethropolis/chip8"
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    # This specifies that it should only run for the Linux amd64 build.
+    builds:
+      - chip8-wails
+    goos:
+      - linux
+    goarch:
+      - amd64
+
+# This section creates the .dmg file for macOS.
+# This replaces your manual `create-dmg` command.
+dmgs:
+  - id: dmg
+    builds:
+      - chip8-wails
+    goos:
+      - darwin # Only run for macOS builds
+    # You can customize the look and feel of the DMG window here.
+    contents:
+      - path: /Applications
+        type: link
+      - path: '{{ .Path }}' # .Path refers to the .app bundle
+        type: file
+
+# Generates a checksums.txt file for all artifacts.
+checksum:
+  name_template: 'checksums.txt'
+
+# Configuration for the GitHub Release itself.
 release:
-  github:
-    owner: bethropolis
-    name: chip8
+  # GoReleaser will automatically use the tag notes for the release body.
+  prerelease: auto
