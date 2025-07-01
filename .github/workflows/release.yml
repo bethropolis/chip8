@@ -4,10 +4,10 @@ on:
     tags: ["v*"]
 
 jobs:
-  permissions:
-    contents: write
   linux:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v4
     - name: Install Linux Dependencies
@@ -42,6 +42,8 @@ jobs:
 
   windows:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v4
     - name: Setup Bun
@@ -64,6 +66,8 @@ jobs:
 
   macos:
     runs-on: macos-14
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v4
     - name: Setup Bun
