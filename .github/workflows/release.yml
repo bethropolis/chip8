@@ -21,7 +21,7 @@ jobs:
         build-name: chip8-wails
         build-platform: linux/amd64
         package: false
-        tags: webkit2_41
+        
         wails-version: "v2.9.0"
     - name: Build AppImage
       run: wails generate appimage \
