@@ -1,3 +1,5 @@
+version: 2
+
 # .goreleaser.yaml
 project_name: chip8-wails
 
@@ -12,7 +14,7 @@ builds:
     # Tell GoReleaser to use the `wails build` command instead of the default `go build`.
     # The template variables {{.Os}}, {{.Arch}}, {{.Version}} are provided by GoReleaser.
     builder: custom
-    build_cmd: wails build -clean -platform {{.Os}}/{{.Arch}} -ldflags="-s -w -X main.version={{.Version}}" -o {{.Path}}
+    command: wails build -clean -platform {{.Os}}/{{.Arch}} -ldflags="-s -w -X main.version={{.Version}}" -o {{.Path}}
 
     # Environment variables required for Wails builds, especially cross-compilation.
     env:
@@ -41,6 +43,8 @@ archives:
   - format: tar.gz
     # This replacement makes the filename friendlier, e.g., "chip8-wails_Linux_x86_64"
     name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}'
+    ids:
+      - chip8-wails
     goos:
       - linux
     files:
@@ -49,6 +53,8 @@ archives:
 
   - format: zip
     name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}'
+    ids:
+      - chip8-wails
     goos:
       - windows
       - darwin
@@ -67,7 +73,7 @@ nfpms:
       - deb
       - rpm
     # This specifies that it should only run for the Linux amd64 build.
-    builds:
+    ids:
       - chip8-wails
     goos:
       - linux
@@ -78,7 +84,7 @@ nfpms:
 # This replaces your manual `create-dmg` command.
 dmgs:
   - id: dmg
-    builds:
+    ids:
       - chip8-wails
     goos:
       - darwin # Only run for macOS builds
