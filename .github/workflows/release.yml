@@ -4,6 +4,8 @@ on:
     tags: ["v*"]
 
 jobs:
+  permissions:
+    contents: write
   linux:
     runs-on: ubuntu-latest
     steps:
@@ -55,10 +57,10 @@ jobs:
     - uses: actions/upload-artifact@v4
       with:
         name: chip8-wails-windows-exe
-        path: build/bin/windows/chip8-wails.exe
+        path: build/bin/windows/chip8-wails
     - uses: softprops/action-gh-release@v2
       with:
-        files: build/bin/windows/chip8-wails.exe
+        files: build/bin/windows/chip8-wails
 
   macos:
     runs-on: macos-14
@@ -84,4 +86,4 @@ jobs:
         build/bin/darwin/chip8-wails.app
     - uses: softprops/action-gh-release@v2
       with:
-        files: "*.dmg"
+        files: "chip8-wails-*.dmg"
