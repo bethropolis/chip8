@@ -87,6 +87,7 @@ jobs:
         --volname "chip8-wails" \
         --window-size 540 380 \
         --app-drop-link 380 120 \
+        "chip8-wails-${{ github.ref_name }}.dmg" \
         build/bin/darwin/chip8-wails.app
     - uses: softprops/action-gh-release@v2
       with:

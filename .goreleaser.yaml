@@ -1,15 +1,16 @@
 project_name: chip8-wails
 builds:
   - id: wails
-    main: ./main.go
+    main: .
     goos: [linux, windows, darwin]
     goarch: [amd64]
 nfpms:
   - id: linuxpkgs
     formats: [deb, rpm]
-    maintainer: "bethropolis@outlook.com"
+    maintainer: "your_email@example.com"
     bindir: /usr/bin
 release:
   github:
-    owner: bethropolis
-    name: chip8
+    owner: your_github_username # Replace with your GitHub username
+    name: chip8 # Replace with your repository name
+
