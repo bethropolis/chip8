@@ -36,6 +36,12 @@ jobs:
         with:
           bun-version: latest # Or a specific version like '1.1.x'
 
+      - name: Install Linux Dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev
+
       - name: Cache Go modules
         uses: actions/cache@v4
         with:
