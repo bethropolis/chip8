@@ -4,7 +4,7 @@ on:
     tags: ["v*"]
 
 jobs:
-  linux-amd64:
+  linux:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -24,47 +24,12 @@ jobs:
           build-platform: linux/amd64
           package: false
           wails-version: "v2.9.0"
-      - name: Build AppImage (amd64)
+      - name: Build AppImage
         run: wails generate appimage \
           -binary ./build/bin/chip8-wails \
           -icon build/linux/appicon.png \
           -desktop build/linux/app.desktop
-      - name: Linux packages (deb/rpm) - amd64
-        uses: goreleaser/goreleaser-action@v5
-        with:
-          args: release --rm-dist
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*.AppImage dist/*.deb dist/*.rpm
-
-  linux-arm64:
-    runs-on: ubuntu-24.04-arm64
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Linux Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest # Or a specific version like '1.1.x'
-      - uses: dAppServer/wails-build-action@main
-        with:
-          build-name: chip8-wails
-          build-platform: linux/arm64
-          package: false
-          wails-version: "v2.9.0"
-      - name: Build AppImage (arm64)
-        run: wails generate appimage \
-          -binary ./build/bin/chip8-wails \
-          -icon build/linux/appicon.png \
-          -desktop build/linux/app.desktop
-      - name: Linux packages (deb/rpm) - arm64
+      - name: Linux packages (deb/rpm)
         uses: goreleaser/goreleaser-action@v5
         with:
           args: release --rm-dist
@@ -93,10 +58,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: chip8-wails-windows-exe
-          path: build/bin/windows/chip8-wails
+          path: build/bin/chip8-wails
       - uses: softprops/action-gh-release@v2
         with:
-          files: build/bin/windows/chip8-wails
+          files: build/bin/chip8-wails
 
   macos:
     runs-on: macos-14
