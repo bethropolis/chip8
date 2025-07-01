@@ -1,6 +1,12 @@
+[![Build Status](https://github.com/bethropolis/chip8-wails/actions/workflows/test-build.yml/badge.svg)](https://github.com/bethropolis/chip8-wails/actions/workflows/test-build.yml) [![Go Version](https://img.shields.io/badge/Go-1.22-00ADD8?logo=go&logoColor=white)](https://go.dev/) [![Wails Version](https://img.shields.io/badge/Wails-v2-blueviolet?logo=wails&logoColor=white)](https://wails.io/) [![License](https://img.shields.io/github/license/bethropolis/chip8-wails)](https://github.com/bethropolis/chip8-wails/blob/main/LICENSE)
+
 # CHIP-8 Emulator
 
 This is a feature-rich CHIP-8 emulator built with Wails (Go backend) and Svelte (frontend) with Tailwind CSS v4 for styling.
+
+## Download
+
+You can download the latest releases for your operating system from the [releases page](https://github.com/bethropolis/chip8-wails/releases).
 
 ## Features
 
