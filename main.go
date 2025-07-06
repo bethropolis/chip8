@@ -11,6 +11,8 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -39,8 +41,10 @@ func main() {
 	// Create application with options
 	err = wails.Run(&options.App{
 		Title:     wailsInfo.Info.ProductName, // Use ProductName for the title
-		Width:     1280,
-		Height:    800,
+		Width:     1920,
+		Height:    1080,
+		MinWidth:  800,
+		MinHeight: 600,
 		Frameless: true, // Frameless window
 		AssetServer: &assetserver.Options{
 			Assets: assets,
@@ -51,7 +55,27 @@ func main() {
 			app,
 		},
 		Linux: &linux.Options{
-			Icon: icon,
+			Icon:                icon,
+			WindowIsTranslucent: false,
+			WebviewGpuPolicy:    linux.WebviewGpuPolicyAlways,
+		},
+
+		Windows: &windows.Options{
+			WebviewIsTransparent: false,
+			WindowIsTranslucent:  false,
+			DisableWindowIcon:    false,
+			// Add Windows-specific theme
+			Theme: windows.SystemDefault,
+		},
+
+		Mac: &mac.Options{
+			WebviewIsTransparent: false,
+			WindowIsTranslucent:  false,
+			About: &mac.AboutInfo{
+				Title:   wailsInfo.Info.ProductName,
+				Message: "A CHIP-8 emulator built with Wails",
+				Icon:    icon,
+			},
 		},
 		Menu: menu.NewMenuFromItems(
 			menu.SubMenu("File", menu.NewMenuFromItems(
