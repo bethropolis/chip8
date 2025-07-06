@@ -17,7 +17,9 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
-          bun-version: latest # Or a specific version like '1.1.x'
+          bun-version: latest
+
+      # Build with Wails (includes proper build tags)
       - uses: dAppServer/wails-build-action@main
         with:
           build-name: chip8-wails
@@ -32,12 +34,17 @@ jobs:
       - name: Linux packages (deb/rpm)
         uses: goreleaser/goreleaser-action@v5
         with:
-          args: release --rm-dist
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Upload all Linux artifacts
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.AppImage dist/*.deb dist/*.rpm
+          files: |
+            chip8-wails-*.AppImage
+            dist/*.deb
+            dist/*.rpm
 
   windows:
     runs-on: windows-latest
@@ -48,7 +55,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
-          bun-version: latest # Or a specific version like '1.1.x'
+          bun-version: latest
       - uses: dAppServer/wails-build-action@main
         with:
           build-name: chip8-wails
@@ -61,7 +68,7 @@ jobs:
           path: build/bin/chip8-wails
       - uses: softprops/action-gh-release@v2
         with:
-          files: build/bin/chip8-wails
+          files: build/bin/chip8-wails.exe
 
   macos:
     runs-on: macos-14
@@ -72,7 +79,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
-          bun-version: latest # Or a specific version like '1.1.x'
+          bun-version: latest
 
       - uses: dAppServer/wails-build-action@main
         with:
@@ -80,10 +87,6 @@ jobs:
           build-platform: darwin/universal
           package: false
           wails-version: "v2.10.2"
-
-      - name: list tree of build/bin
-        run: find . -print
-        working-directory: build/bin
 
       - name: Install create-dmg
         run: brew install create-dmg

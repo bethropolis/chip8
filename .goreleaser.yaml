@@ -2,13 +2,23 @@ project_name: chip8-wails
 builds:
   - id: wails
     main: .
-    goos: [linux, windows, darwin]
+    goos: [linux]
     goarch: [amd64]
+    flags:
+      - -tags=webkit2_41
+    # Skip the build since we're using the wails-build-action output
+    skip: true
 nfpms:
   - id: linuxpkgs
     formats: [deb, rpm]
     maintainer: "bethropolis@outlook.com"
     bindir: /usr/bin
+    # Use the binary built by wails-build-action
+    contents:
+      - src: ./build/bin/chip8-wails
+        dst: /usr/bin/chip8-wails
+        file_info:
+          mode: 0755
 release:
   github:
     owner: bethropolis
