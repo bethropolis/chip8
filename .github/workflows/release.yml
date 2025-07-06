@@ -91,8 +91,9 @@ jobs:
 
           # Copy files
           cp ./build/bin/chip8-wails chip8-wails.AppDir/usr/bin/
-          cp frontend/src/assets/images/icons/256x256.png chip8-wails.AppDir/chip8-wails.png
-          cp frontend/src/assets/images/icons/256x256.png chip8-wails.AppDir/usr/share/icons/hicolor/256x256/apps/
+          cp build/linux/app.desktop chip8-wails.AppDir/
+          cp build/linux/appicon.png chip8-wails.AppDir/chip8-wails.png
+          cp build/linux/appicon.png chip8-wails.AppDir/usr/share/icons/hicolor/256x256/apps/
 
           # Make AppImage using cached tool
           $APPIMAGETOOL chip8-wails.AppDir chip8-wails-${{ github.ref_name }}.AppImage
@@ -200,7 +201,7 @@ jobs:
           bun-version: latest
 
       - uses: dAppServer/wails-build-action@main
-        with:  you
+        with:
           build-name: chip8-wails
           build-platform: darwin/universal
           package: false
