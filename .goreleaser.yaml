@@ -1,13 +1,12 @@
 project_name: chip8-wails
 builds:
   - id: wails
-    main: .
+    builder: prebuilt
     goos: [linux]
     goarch: [amd64]
-    flags:
-      - -tags=webkit2_41
-    # Skip the build since we're using the wails-build-action output
-    skip: true
+    prebuilt:
+      path: "build/bin/chip8-wails"
+    binary: "chip8-wails"
 nfpms:
   - id: linuxpkgs
     formats: [deb, rpm]
