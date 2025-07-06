@@ -10,3 +10,5 @@ codebase.md
 
 dist/
 artifacts/
+chip8-wails-*.AppImage
+chip8-wails.AppDir/
