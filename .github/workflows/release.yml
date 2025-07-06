@@ -98,10 +98,11 @@ jobs:
           # Make AppImage using cached tool
           $APPIMAGETOOL chip8-wails.AppDir chip8-wails-${{ github.ref_name }}.AppImage
 
-      # Create packages with goreleaser
+      # Create packages with goreleaser (using newer version)
       - name: Linux packages (deb/rpm)
-        uses: goreleaser/goreleaser-action@v5
+        uses: goreleaser/goreleaser-action@v6
         with:
+          version: "~> v2"
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
