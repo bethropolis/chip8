@@ -6,7 +6,6 @@ builds:
     goarch: [amd64]
     prebuilt:
       path: "build/bin/chip8-wails"
-    binary: "chip8-wails"
 nfpms:
   - id: linuxpkgs
     formats: [deb, rpm]
