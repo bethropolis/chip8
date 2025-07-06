@@ -78,10 +78,25 @@ jobs:
           package: false
           wails-version: "v2.10.2"
       - name: Build AppImage
-        run: wails generate appimage \
-          -binary ./build/bin/chip8-wails \
-          -icon build/appicon.png \
-          -desktop build/linux/app.desktop
+        run: |
+          # Use cached AppImage tools
+          APPIMAGETOOL=~/appimage-tools/appimagetool-x86_64.AppImage
+
+          # Create AppDir structure
+          mkdir -p chip8-wails.AppDir/usr/bin
+          mkdir -p chip8-wails.AppDir/usr/share/applications
+          mkdir -p chip8-wails.AppDir/usr/share/icons/hicolor/256x256/apps
+
+          # Copy files
+          cp ./build/bin/chip8-wails chip8-wails.AppDir/usr/bin/
+          cp build/linux/app.desktop chip8-wails.AppDir/
+          cp build/linux/appicon.png chip8-wails.AppDir/chip8-wails.png
+          cp build/linux/appicon.png chip8-wails.AppDir/usr/share/icons/hicolor/256x256/apps/
+
+          # Make AppImage using cached tool
+          $APPIMAGETOOL chip8-wails.AppDir chip8-wails-${{ github.ref_name }}.AppImage
+
+      # Create packages with goreleaser
       - name: Linux packages (deb/rpm)
         uses: goreleaser/goreleaser-action@v5
         with:
@@ -187,7 +202,7 @@ jobs:
           bun-version: latest
 
       - uses: dAppServer/wails-build-action@main
-        with:  you
+        with:
           build-name: chip8-wails
           build-platform: darwin/universal
           package: false
