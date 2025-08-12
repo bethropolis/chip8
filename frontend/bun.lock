@@ -3,16 +3,14 @@
   "workspaces": {
     "": {
       "name": "frontend",
-      "dependencies": {
-        "lucide-svelte": "^0.525.0",
-        "svelte-gamepad": "^0.1.1",
-      },
       "devDependencies": {
         "@sveltejs/vite-plugin-svelte": "^1.0.1",
         "@tailwindcss/postcss": "^4.1.11",
         "autoprefixer": "^10.4.21",
+        "lucide-svelte": "^0.525.0",
         "postcss": "^8.5.6",
         "svelte": "^3.49.0",
+        "svelte-gamepad": "^0.1.1",
         "vite": "^3.0.7",
       },
     },
