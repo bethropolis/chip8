@@ -27,7 +27,7 @@ jobs:
       - name: Build AppImage
         run: wails generate appimage \
           -binary ./build/bin/chip8-wails \
-          -icon build/linux/appicon.png \
+          -icon build/appicon.png \
           -desktop build/linux/app.desktop
       - name: Linux packages (deb/rpm)
         uses: goreleaser/goreleaser-action@v5
