@@ -55,7 +55,7 @@ jobs:
         if: steps.cache-linux-deps.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev libfuse2
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev libfuse2 rpm
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -77,6 +77,7 @@ jobs:
           build-platform: linux/amd64
           package: false
           wails-version: "v2.10.2"
+      # Create AppImage
       - name: Build AppImage
         run: |
           # Use cached AppImage tools
@@ -96,22 +97,89 @@ jobs:
           # Make AppImage using cached tool
           $APPIMAGETOOL chip8-wails.AppDir chip8-wails-${{ github.ref_name }}.AppImage
 
-      # Create packages with goreleaser (using newer version)
-      - name: Linux packages (deb/rpm)
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          version: "~> v2"
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Create DEB package manually
+      - name: Build DEB Package
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+
+          # Create package structure
+          mkdir -p chip8-wails-deb/DEBIAN
+          mkdir -p chip8-wails-deb/usr/bin
+          mkdir -p chip8-wails-deb/usr/share/applications
+          mkdir -p chip8-wails-deb/usr/share/icons/hicolor/256x256/apps
+
+          # Copy binary
+          cp ./build/bin/chip8-wails chip8-wails-deb/usr/bin/
+          chmod +x chip8-wails-deb/usr/bin/chip8-wails
+
+          # Copy desktop file and icon
+          cp build/linux/app.desktop chip8-wails-deb/usr/share/applications/chip8-wails.desktop
+          cp frontend/src/assets/images/icons/256x256.png chip8-wails-deb/usr/share/icons/hicolor/256x256/apps/chip8-wails.png
+
+          # Create control file
+          cat > chip8-wails-deb/DEBIAN/control << EOF
+          Package: chip8-wails
+          Version: $VERSION
+          Section: games
+          Priority: optional
+          Architecture: amd64
+          Maintainer: bethropolis@outlook.com
+          Description: CHIP-8 emulator built with Wails
+          EOF
+
+          # Build package
+          dpkg-deb --build chip8-wails-deb chip8-wails-$VERSION-amd64.deb
+
+      # Create RPM package manually
+      - name: Build RPM Package
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+
+          # Create RPM build structure
+          mkdir -p ~/rpmbuild/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
+
+          # Create spec file
+          cat > ~/rpmbuild/SPECS/chip8-wails.spec << EOF
+          Name: chip8-wails
+          Version: $VERSION
+          Release: 1
+          Summary: CHIP-8 emulator built with Wails
+          License: MIT
+          URL: https://github.com/bethropolis/chip8
+          BuildArch: x86_64
+          Requires: gtk3, webkit2gtk4.1
+
+          %description
+          CHIP-8 emulator built with Wails
+
+          %install
+          mkdir -p %{buildroot}/usr/bin
+          mkdir -p %{buildroot}/usr/share/applications
+          mkdir -p %{buildroot}/usr/share/icons/hicolor/256x256/apps
+
+          cp %{_topdir}/../../../build/bin/chip8-wails %{buildroot}/usr/bin/
+          cp %{_topdir}/../../../build/linux/app.desktop %{buildroot}/usr/share/applications/chip8-wails.desktop
+          cp %{_topdir}/../../../frontend/src/assets/images/icons/256x256.png %{buildroot}/usr/share/icons/hicolor/256x256/apps/chip8-wails.png
+
+          %files
+          /usr/bin/chip8-wails
+          /usr/share/applications/chip8-wails.desktop
+          /usr/share/icons/hicolor/256x256/apps/chip8-wails.png
+          EOF
+
+          # Build RPM
+          rpmbuild -bb ~/rpmbuild/SPECS/chip8-wails.spec
+
+          # Copy to current directory
+          cp ~/rpmbuild/RPMS/x86_64/chip8-wails-$VERSION-1.x86_64.rpm .
 
       # Upload all Linux artifacts
       - uses: softprops/action-gh-release@v2
         with:
           files: |
             chip8-wails-*.AppImage
-            dist/*.deb
-            dist/*.rpm
+            chip8-wails-*.deb
+            chip8-wails-*.rpm
 
   windows:
     runs-on: windows-latest
